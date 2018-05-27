@@ -25,5 +25,6 @@ for sanction_list in [consolidated_list, sdn_list]:
                                 namepart_value = namepart.NamePartValue
                                 namevalue = namepart_value.get_valueOf_()
                                 parts.append(namevalue)
-                            print(parts)
+                            print(party.FixedRef, parts)
+                print("") # new line
 
