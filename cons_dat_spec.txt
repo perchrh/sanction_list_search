@@ -1,0 +1,430 @@
+                OFFICE OF FOREIGN ASSETS CONTROL
+                    U.S. TREASURY DEPARTMENT
+
+                   CONSOLIDATED SANCTIONS LIST
+                      DATA SPECIFICATION 
+                      
+First Released:   10/10/2014
+
+
+PLEASE NOTE IMPORTANT INFORMATION REGARDING THE TECHNICAL STRUCTURE OF THESE
+FILES ARE FEATURED AT THE BOTTOM OF THE DOCUMENT
+
+     OFAC is publishing consolidated data format versions of its Non-Specially
+Designated Nationals (SDN) Lists.  The "Consolidated List" contains designation
+and target information from OFAC’s Non-SDN, Palestinian Legislative Council List
+(NS-PLC List), the Part 561 List, the Non-SDN Iran Sanctions Act List (NS-ISA
+List), the Foreign Sanctions Evaders List (FSE List), and the Sectoral Sanctions
+Identifications List (SSI List).
+
+     OFAC is publishing its Consolidated List in a number of data formats. 
+These electronic publications as transmitted by OFAC are designed as reference
+tools providing actual notice of actions by OFAC with respect to OFAC's Non-SDN
+lists. The latest changes may appear here prior to their publication in the
+Federal Register, and it is intended that users rely on changes indicated in
+these documents that post-date the most recent Federal Register publication.
+Such changes reflect official actions of OFAC and will be reflected as soon as
+practicable in the Federal Register under the index heading "Foreign Assets
+Control."  New Federal Register notices with regard to the sanctions lists
+administered by OFAC may be published at any time. Users are advised to check
+the Federal Register  and these electronic publications routinely for additional
+names or other changes to the listings. Entities and individuals on the list are
+occasionally licensed by OFAC to transact business with U.S. persons in
+anticipation of removal from the list or because of foreign policy
+considerations in unique circumstances.  Licensing in anticipation of official
+Federal Register publication of a notice of removal is reflected in these
+publications by removal from the list.   
+
+Technical Specification: 
+
+Format *.del consists of records separated by carriage returns (ASCII character 
+13), with fields (values) within records delimited by the "@" symbol (ASCII 
+character 64).  Text values are enclosed by quotation marks (")(ASCII character 
+34).  
+
+Format *.ff consists of records separated by carriage returns, with fields 
+within the records beginning at fixed locations.  
+
+Format *.csv consists of records separated by carriage returns (ASCII character 
+13), with fields (values) within records delimited by the "," (comma) symbol 
+(ASCII character 44).  
+
+Format *.PIP consists of records separated by carriage returns (ASCII character
+13), with fields (values) within records  delimited by the "|" symbol (ASCII
+character 124).  
+
+Null values for all four  formats consist of "-0-" (ASCII characters 45, 48,
+45).
+
+     The  @ Delimited (.del), Comma Separated Values (.csv), Pipe  (|) delimited
+(.pip) and Fixed-Field (.ff) releases consist of four ASCII text files--a main
+file listing the name of the listing and other information unique to that entity
+(cons_prim.*), a file of addresses (cons_add.*), a file of alternate names
+(cons_alt.*), and a spillover file with additional identifying information
+(cons_comments.*).  Addresses and alternate names are linked to particular
+entries using unique integer values in a linking or primary key column. The
+integers used are assigned for linking purposes only and do not represent an
+official reference to that entity.
+
+     Releases of the database-format files are intended as a service to the user
+community.  OFAC's NS-PLC List, Part 561 List, NS-ISA List, FSE List and SSI
+lists are published in the Federal Register.  All of OFAC's lists are drawn from
+the same underlying data and every effort has been made to ensure consistency. 
+The Federal Register will govern should differences arise.  Due to the nature,
+urgency, and sensitivity of the programs  which OFAC administers and enforces,
+it may not always be possible to provide advanced notice to users of format
+changes to the database  structure.
+
+     The files associated with each release are:
+
+@ delimited:     CONS_PRIM.DEL, CONS_ADD.DEL, CONS_ALT.DEL, CONS_COMMENTS.DEL
+| delimited:	   CONS_PRIM.PIP, CONS_ADD.PIP, CONS_ALT.PIP, CONS_COMMENTS.PIP
+fixed field:     CONS_PRIM.FF,  CONS_ADD.FF,  CONS_ALT.FF,  CONS_COMMENTS.FF
+Comma delimited: CONS_PRIM.CSV, CONS_ADD.CSV, CONS_ALT.CSV, CONS_COMMENTS.CSV
+XML:  	         consolidated.XML	
+Misc: cons_dat_spec.txt (this file), consolidated.xsd (XML Consolidated List
+schema).
+
+[The Zip Archive contains a total of 19 files]   
+
+<<<PLEASE NOTE: WHILE PERSONS ON THE CONSOLIDATED LIST ARE NOT SDNS (UNLESS THEY
+ARE ALSO LISTED ON THE SDN LIST) OFAC KEPT THE STANDARD SDN COLUMN HEADERS IN
+ITS LEGACY FLAT FILES TO EASE THE INTEGRATION OF THE CONSOLIDATED LIST'S DATA
+WITH EXISTING DATABASES AND SCREENING SYSTEMS. TREATMENT INFORMATION HAS BEEN
+ADDED TO THE REMARKS FIELD FOR SOME OF THE ENTRIES TO FACILITATE APPROPRIATE
+ACTION WHEN A TRUE HIT IS FOUND.  PROGRAM TAGS ARE ALSO USED TO DETERMINE THE
+LIST THE ENTRIES ARE FROM.  FOR EXAMPLE, ENTRIES WITH THE PROGRAM TAG [NS-PLC]
+ARE FROM THE NON-SDN PALESTINIAN LEGISLATIVE COUNCIL LIST.  THE SAME PROGRAM TAG
+NOMENCLATURE IS USED ON THE CONSOLIDATED LIST AS ON OTHER OFAC LISTS.>>>
+
+FORMAT CONSOLIDATED @ DELIMITED
+
+Main table, text file name CONS_PRIM.DEL
+
+Column
+sequence Column name  Type     Size  Description
+-------- ------------ -------  ----  ---------------------
+1        ent_num      number         unique record
+                                     identifier/unique
+                                     listing identifier
+2        SDN_Name     text     350   name of entry
+3        SDN_Type     text     12    type of entry
+4        Program      text     50    sanctions program name
+5        Title        text     200   title of an individual
+6        Call_Sign    text     8     vessel call sign
+7        Vess_type    text     25    vessel type
+8        Tonnage      text     14    vessel tonnage
+9        GRT          text     8     gross registered tonnage
+10       Vess_flag    text     40    vessel flag
+11       Vess_owner   text     150   vessel owner
+12       remarks      text     1000  remarks on entry*
+
+Address table, text file name CONS_ADD.DEL
+
+Column
+sequence Column name  Type     Size  Description
+-------- ------------ -------  ----  ---------------------
+1        Ent_num      number         link to unique listing
+2        Add_num      number         unique record identifier
+3        Address      text     750   street address
+4        City/				text     116   city, state/province, zip/postal code
+         State/Province/
+         Postal Code
+5        Country      text     250   country of address
+6        Add_remarks  text     200   remarks on address
+
+Alternate identity table, text file name CONS_ALT.DEL
+
+Column
+sequence Column name  Type     Size  Description
+-------- ------------ -------  ----  ---------------------
+1        ent_num      number         link to unique listing
+2        alt_num      number         unique record identifier
+3        alt_type     text     8     type of alternate identity
+                                     (aka, fka, nka)
+4        alt_name     text     350   alternate identity name
+5        alt_remarks  text     200   remarks on alternate identity
+
+Record separator:              carriage return
+field (value) delimiter:       @
+text value quotes:             "
+null:                          -0-
+
+FORMAT CONSOLIDATED | DELIMITED
+
+Main table, text file name CONS_PRIM.PIP
+
+Column
+sequence Column name  Type     Size  Description
+-------- ------------ -------  ----  ---------------------
+1        ent_num      number         unique record
+                                     identifier/unique
+                                     listing identifier
+2        SDN_Name     text     350   name of entry
+3        SDN_Type     text     12    type of entry
+4        Program      text     50    sanctions program name
+5        Title        text     200   title of an individual
+6        Call_Sign    text     8     vessel call sign
+7        Vess_type    text     25    vessel type
+8        Tonnage      text     14    vessel tonnage
+9        GRT          text     8     gross registered tonnage
+10       Vess_flag    text     40    vessel flag
+11       Vess_owner   text     150   vessel owner
+12       remarks      text     1000  remarks on entry*
+
+Address table, text file name CONS_ADD.PIP
+
+Column
+sequence Column name  Type     Size  Description
+-------- ------------ -------  ----  ---------------------
+1        Ent_num      number         link to unique listing
+2        Add_num      number         unique record identifier
+3        Address      text     750   street address
+4        City/				text     116   city, state/province, zip/postal code
+         State/Province/
+         Postal Code
+5        Country      text     250   country of address
+6        Add_remarks  text     200   remarks on address
+
+Alternate identity table, text file name CONS_ALT.PIP
+
+Column
+sequence Column name  Type     Size  Description
+-------- ------------ -------  ----  ---------------------
+1        ent_num      number         link to unique listing
+2        alt_num      number         unique record identifier
+3        alt_type     text     8     type of alternate identity
+                                     (aka, fka, nka)
+4        alt_name     text     350   alternate identity name
+5        alt_remarks  text     200   remarks on alternate identity
+
+Record separator:              carriage return
+field (value) delimiter:       |
+text value quotes:             "
+null:                          -0-
+
+FORMAT CONSOLIDATED FIXED FIELD
+
+Main table, text file name CONS_PRIM.FF
+
+Column                               Posi-
+sequence Column name  Type     Size  tion  Description
+-------- -----------  -------  ----  ----  ---------------------
+1        ent_num      number   10    10    unique record
+                                           identifier/unique
+                                           listing identifier
+2        SDN_Name     text     350   11    name of entry
+3        SDN_Type     text     12    361   type of entry
+4        Program      text     50    373   sanctions program name
+5        Title        text     200   423   title of an individual
+6        Call_Sign    text     8     623   vessel call sign
+7        Vess_type    text     25    631   vessel type
+8        Tonnage      text     14    656   vessel tonnage
+9        GRT          text     8     670   gross registered tonnage
+10       Vess_flag    text     40    678   vessel flag
+11       Vess_owner   text     150   718   vessel owner
+12       Remarks      text     1000  868   remarks on entry*
+         END OF ROW                  1868
+
+Address table, text file name CONS_ADD.FF
+
+Column                               Posi-
+sequence Column name  Type     Size  tion  Description
+-------- -----------  -------  ----  ----  ---------------------
+1        Ent_num      number   10    1     link to unique listing
+2        Add_num      number   10    11    unique record identifier
+3        Address      text     750   21    street address
+4        City/				text     116   771   city, state/province, zip/postal code
+         State/Province/
+         Postal Code
+5        Country      text     250   887   country of address
+6        Add_remarks  text     200   1137  remarks on address
+	 			 END OF ROW		    1337
+
+Alternate identity table, text file name CONS_ALT.FF
+
+Column                               Posi-
+sequence Column name  Type     Size  tion  Description
+-------- -----------  -------  ----  ----  ---------------------
+1        ent_num      number   10    1     link to unique listing
+2        alt_num      number   10    11    unique record identifier
+3        alt_type     text     8     21    type of alternate
+                                           identity (aka, fka, nka)
+4        alt_name     text     350   29    alternate identity name
+5        alt_remarks  text     200   379   remarks on alternate identity
+         END OF ROW		     579
+
+Record separator:     carriage return
+null:                 -0-
+
+FORMAT CONSOLIDATED CSV
+
+Main table, text file name CONS_PRIM.CSV
+
+Column
+sequence Column name  Type     Size  Description
+-------- ------------ -------  ----  ---------------------
+1        ent_num     number          unique record
+                                     identifier/unique
+                                     listing identifier
+2        SDN_Name     text     350   name of entry
+3        SDN_Type     text     12    type of entry
+4        Program      text     50    sanctions program name
+5        Title        text     200   title of an individual
+6        Call_Sign    text     8     vessel call sign
+7        Vess_type    text     25    vessel type
+8        Tonnage      text     14    vessel tonnage
+9        GRT          text     8     gross registered tonnage
+10       Vess_flag    text     40    vessel flag
+11       Vess_owner   text     150   vessel owner
+12       Remarks      text     1000  remarks on entry*
+
+Address table, text file name CONS_ADD.CSV
+
+Column
+sequence Column name  Type     Size  Description
+-------- ------------ -------  ----  ---------------------
+1        Ent_num      number         link to unique listing
+2        Add_num      number         unique record identifier
+3        Address      text     750   street address
+4        City/				text     116   city, state/province, zip/postal code
+         State/Province/
+         Postal Code
+5        Country      text     250   country of address
+6        Add_remarks  text     200   remarks on address
+
+Alternate identity table, text file name CONS_ALT.CSV
+
+Column
+sequence Column name  Type     Size  Description
+-------- ------------ -------  ----  ---------------------
+1        ent_num      number         link to unique listing
+2        alt_num      number         unique record identifier
+3        alt_type     text     8     type of alternate identity
+                                     (aka, fka, nka)
+4        alt_name     text     350   alternate identity name
+5        alt_remarks  text     200   remarks on alternate identity
+
+Record separator:              carriage return
+field (value) delimiter:       ,
+text value quotes:             "
+null:                          -0-
+
+*SPILLOVER FILES:
+
+OFAC has made certain changes to its list production system that now allow for 
+an unlimited number of identifiers, features and linked to identifications to
+be added to a record.  In the fixed-width and delimited files these data are 
+stored in the remarks field.  Due to these changes, it is now possible for a
+ record to exceed the 1000 character remarks limitation.  Data that exceeds
+the specified field limit will be truncated to ensure that the current data
+specification is followed.  However, in order to ensure that users of these
+files continue to have access to truncated data, OFAC has created "spillover
+files." These files will follow the same data specification of the files they
+are associated with.  However, there will be no upper limit on row length in
+these files.
+
+The spillover file names will be:
+
+cons_comments.csv
+cons_comments.pip
+cons_comments.ff
+cons_comments.del
+
+These files will be included in the Consolidated zip files and will be listed 
+separately on the OFAC website's Consolidated List page.  They will also be
+listed  separately in the /consolidated_list folder of OFAC's FTP sites.  
+
+
+
+THE DISPOSITION OF ALIASES:
+
+OFAC classifies aliases as weak or strong.  In the data files discussed in this
+document, weak aliases are not stored in the CONS_alt.* files. Weak aliases are
+stored in the remarks field that trails every primary record in the CONS_PRIM.*
+files.  For more information on weak aliases  please review the following text
+taken from the frequently asked questions  on OFAC's website.  
+
+What are weak aliases (AKAs)?
+
+A “weak AKA” is a term for a relatively broad or generic alias that may generate
+a large volume of false hits.  Weak AKAs include nicknames, noms-de-guerre, and
+unusually common acronyms.  OFAC includes these AKAs because, based on
+information available to it, the sanctions targets refer to themselves, or are
+referred to, by these names.  As a result, these AKAs may be useful for
+identification purposes, particularly in confirming a possible “hit” or “match”
+triggered by other identifier information.  Realizing, however, the large number
+of false hits that these names may generate, OFAC qualitatively distinguishes
+them from other AKAs by designating them as weak.  OFAC has instituted
+procedures that attempt to make this qualitative review of aliases as objective
+as possible.  Before issuing this updated guidance, OFAC conducted a review of
+all aliases on the SDN list.  Each SDN alias was run through a computer program
+that evaluated the potential of an alias to produce false positives in an
+automated screening environment.  Names were evaluated using the following
+criteria:
+
+Character length (shorter strings were assumed to be less effective in a
+screening environment than longer strings); 
+The presence of numbers in an alias (digits 0-9); 
+The presence of common words that are generally considered to constitute a
+nickname (example: Ahmed the Tall); 
+References in the alias to geographic locations (example: Ahmed the Sudanese); 
+The presence of very common prefixes in a name where the prefix was one of only
+two strings in a name (example: Mr. Smith).
+Aliases that met one or more of the above criteria were flagged for human
+review.  OFAC subject matter experts then reviewed each of the automated
+recommendations and made final decisions on the flagging of each
+alias.*
+
+OFAC intends to use these procedures to evaluate all new aliases introduced to
+its various lists. 
+
+Where can I find weak aliases (AKAs)?
+ 
+Weak AKAs appear differently depending on which file format of the Consolidated
+List is utilized.
+ 
+In the TXT and PDF versions of the NS-PLC, Part 561 List, NS-ISA List, FSE List
+and the SSI List, weak AKAs are encapsulated in double-quotes within the AKA
+listing:
+ 
+ALLANE, Hacene (a.k.a. ABDELHAY, al-Sheikh; a.k.a. AHCENE, Cheib; a.k.a. "ABU
+AL-FOUTOUH"; a.k.a. "BOULAHIA"; a.k.a. "HASSAN THE OLD");
+DOB 17 Jan 1941; POB El Menea, Algeria (individual) [SDGT]
+ 
+This convention also is followed in the alphabetical listing published in
+Appendix A to Chapter V of Title 31 of the Code of Federal Regulations.  
+
+In the DEL, FF, PIP, and CSV file formats, weak AKAs are listed in the Remarks
+field (found at the end of the record) of the Consolidated file.  In these
+formats, weak AKAs are bracketed by quotation marks.
+
+8219@"ALLANE, Hacene"@"individual"@"SDGT"@-0- @-0- @-0- @-0- @-0- @-0- @-0-
+@"DOB 17 Jan 1941; POB El Menea, Algeria; a.k.a. 'ABU AL-FOUTOUH'; a.k.a.
+'BOULAHIA'; a.k.a. 'HASSAN THE OLD'."
+
+In the XML version of the Consolidated List, there is a Type element for each
+AKA.  The Type can either be 'weak' or 'strong' (see the XML Schema (XSD file)
+at:  http://www.treasury.gov/ofac/downloads/consolidated/consolidated.xsd for
+more information).  
+
+Am I required to screen for weak aliases (AKAs)?
+ 
+OFAC’s regulations do not explicitly require any specific screening regime. 
+Financial institutions and others must make screening choices based on their
+circumstances and compliance approach.  As a general matter, though, OFAC does
+not expect that persons will screen for weak AKAs, but expects that such AKAs
+may be used to help determine whether a “hit” arising from other information is
+accurate.  
+
+Will I be penalized for processing an unauthorized transaction involving a weak
+alias (AKA)?
+
+A person who processes an unauthorized transaction involving a designated person
+has violated U.S. law and may be subject to an enforcement action. Generally
+speaking, however, if (i) the only sanctions reference in the transaction is a
+weak AKA, (ii) the person involved in the processing had no other reason to know
+that the transaction involved a designated person or was otherwise in violation
+of U.S. law, and (iii) the person maintains a rigorous risk-based compliance
+program, OFAC will not issue a civil penalty against an individual or entity for
+processing such a transaction.
