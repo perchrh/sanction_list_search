@@ -20,7 +20,7 @@ for sanction_list in [consolidated_list, sdn_list]:
             if profile.PartySubTypeID == 4: # consider only persons for now
                 for identity in profile.Identity:
                     for alias in identity.Alias:
-                        if alias.LowQuality == False or True:
+                        if alias.LowQuality == False:
                             for name in alias.DocumentedName:
                                 if name.DocNameStatusID == 1: # primary latin alphabet
                                     parts = []
