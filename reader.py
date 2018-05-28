@@ -15,11 +15,12 @@ for sanction_list in [consolidated_list, sdn_list]:
     # print person names in list
 
     for party in sanctioned_parties:
+        name_aliases = []
         for profile in party.Profile:
             if profile.PartySubTypeID == 4: # consider only persons for now
                 for identity in profile.Identity:
                     for alias in identity.Alias:
-                        if alias.AliasTypeID == 1403: # consider names only
+                        if alias.LowQuality == False or True:
                             for name in alias.DocumentedName:
                                 if name.DocNameStatusID == 1: # primary latin alphabet
                                     parts = []
@@ -27,5 +28,7 @@ for sanction_list in [consolidated_list, sdn_list]:
                                         namepart_value = namepart.NamePartValue
                                         namevalue = namepart_value.get_valueOf_()
                                         parts.append(namevalue)
-                                    print(party.FixedRef, parts)
-                print("") # new line
+                                    if parts:
+                                        name_aliases.append(parts)
+        if name_aliases:
+            print(party.FixedRef, name_aliases)
