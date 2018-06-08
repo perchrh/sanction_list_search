@@ -94,17 +94,20 @@ def compute_phonetic_bin_lookup_table(id_to_name):
 
                 bin_to_id[bin].append(reference)
 
+    max_count = len(id_to_name) / 8  # 12.5% or more of the entries has it
+    filtered_dict = remove_outliers(bin_to_id, max_count)
+
+    return filtered_dict
+
+
+def remove_outliers(bin_to_id, max_count):
+    # FIXME Poor mans removal for now. We should probably rather generate a list of stop words, and filter those out
+    # possibly in addition remove statistical outliers, bins that have super-many references. They don't help in search either.
     outliers = []
     for bin, references in bin_to_id.items():
-        # FIXME Poor mans removal for now. We should probably rather generate a list of stop words, and filter those out
-        # possibly in addition remove statistical outliers, bins that have super-many references. They don't help in search either.
-
-        max_count = len(id_to_name) / 8  # 12.5% or more of the entries has it
         if len(references) > max_count:
             outliers.append(bin)
-
     filtered_dict = {key: bin_to_id[key] for key in bin_to_id if key not in outliers}
-
     return filtered_dict
 
 
