@@ -16,7 +16,7 @@ for entity in entities:
     for alias in entity.ENTITY_ALIAS:
         if alias.QUALITY == 'Low':
             continue #skip these for now
-            
+
         name = alias.ALIAS_NAME
         name = " ".join(name.split()) #remove white-space and linebreaks
         if name:
@@ -30,7 +30,8 @@ for individual in individuals:
         continue # don't include delisted entries
 
     name_parts = [individual.FIRST_NAME , individual.SECOND_NAME, individual.THIRD_NAME, individual.FOURTH_NAME]
-    name = " ".join([part for part in name_parts if part])
+    name_parts = [" ".join(name.split()) for name in name_parts if name] #remove white-space and linebreaks
+    name = " ".join(name_parts)
     aliases.add(name)
     for alias in individual.INDIVIDUAL_ALIAS:
         if alias.QUALITY == 'Low':
