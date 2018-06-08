@@ -1,5 +1,7 @@
 Print names and reference id for entities and individuals on the EU, UN and OFAC sanction lists.
 
+See */reader.py for a basic read method
+
 Thoughts on algorithms for fuzzy name matching
 -----
 There are different strategies for achieving this task, and there seems to be a common pattern among vendors for OFAC and other sanction list software implement fuzzy name search.  
@@ -17,5 +19,6 @@ Various improvements are possible. Of special note, to check both similarity on 
 
 References
 
-https://www.treasury.gov/resource-center/sanctions/SDN-List/Pages/fuzzy_logic.aspx - item 4
-https://easyofac.com/#desc – heading "Layered fuzzy search"
+- https://www.treasury.gov/resource-center/sanctions/SDN-List/Pages/fuzzy_logic.aspx -- see item 4
+
+- https://easyofac.com/#desc –- heading "Layered fuzzy search"
