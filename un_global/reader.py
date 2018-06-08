@@ -12,12 +12,13 @@ for entity in entities:
     if entity.DELISTED_ON:
         continue # don't include delisted entries
 
-    aliases.append(entity.FIRST_NAME)
+    aliases.append(entity.FIRST_NAME.strip())
     for alias in entity.ENTITY_ALIAS:
         if alias.QUALITY == 'Low':
             continue #skip these for now
             
         name = alias.ALIAS_NAME
+        name = " ".join(name.split()) #remove white-space and linebreaks
         if name:
             aliases.append(name)
     print(fixedRef, aliases)
