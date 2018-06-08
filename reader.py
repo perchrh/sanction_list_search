@@ -5,7 +5,9 @@ consolidated_list = sdn.parse('cons_advanced.xml', silence=True)
 sdn_list = sdn.parse('sdn_advanced.xml', silence=True)
 
 
-for sanction_list in [consolidated_list, sdn_list]:
+#sources = [consolidated_list, sdn_list]
+sources = [sdn_list]
+for sanction_list in sources:
     sanctioned_parties = sanction_list.DistinctParties.get_DistinctParty()
 
     number_of_parties = len(sanctioned_parties)
