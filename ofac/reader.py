@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
 import sdn
+
 consolidated_list = sdn.parse('cons_advanced.xml', silence=True)
 sdn_list = sdn.parse('sdn_advanced.xml', silence=True)
 
-
-#sources = [consolidated_list, sdn_list]
-sources = [sdn_list]
+sources = [consolidated_list, sdn_list]
 for sanction_list in sources:
     sanctioned_parties = sanction_list.DistinctParties.get_DistinctParty()
 
@@ -19,12 +18,12 @@ for sanction_list in sources:
     for party in sanctioned_parties:
         name_aliases = []
         for profile in party.Profile:
-            if profile.PartySubTypeID == 4: # consider only persons for now
+            if profile.PartySubTypeID == 4:  # consider only persons for now
                 for identity in profile.Identity:
                     for alias in identity.Alias:
                         if alias.LowQuality == False:
                             for name in alias.DocumentedName:
-                                if name.DocNameStatusID == 1: # primary latin alphabet
+                                if name.DocNameStatusID == 1:  # primary latin alphabet
                                     parts = []
                                     for namepart in name.DocumentedNamePart:
                                         namepart_value = namepart.NamePartValue
