@@ -1,0 +1,6 @@
+Ref
+https://webgate.ec.europa.eu/europeaid/fsd/fsf
+
+https://webgate.ec.europa.eu/europeaid/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content
+https://webgate.ec.europa.eu/europeaid/fsd/fsf/public/files/xsdFullSanctionsList_1_1/content
+
