@@ -7,33 +7,39 @@ from collections import Counter
 
 import eu_global
 
+dmeta = fuzzy.DMetaphone()
+
 
 def loadSanctions(filename):
     sanctions = eu_global.parse(filename, silence=True)
 
-    id_to_name = {}
-    for entity in sanctions.sanctionEntity:
-        fixedRef = entity.logicalId
-        # TODO distinguish between entities and individuals
+    id_to_name_entities = {}
+    id_to_name_persons = {}
+    for subject in sanctions.sanctionEntity:
+        fixedRef = subject.logicalId
         aliases = []
-        for alias in entity.nameAlias:
+        for alias in subject.nameAlias:
             if not alias.strong == 'true':  # filter for now
                 continue
             name = alias.wholeName
             aliases.append(name)
-        id_to_name[fixedRef] = aliases
-    return id_to_name
+        if subject.subjectType.code == "person":
+            id_to_name_persons[fixedRef] = aliases
+        else:
+            id_to_name_entities[fixedRef] = aliases
+
+    return (id_to_name_persons, id_to_name_entities)
 
 
 def normalize_name_parts(names):
-    unique_name_parts = set()
+    all_name_parts = []
     for name in names:
         for name_part in name.split():
             normalized_name = normalize_word(name_part)
             if normalized_name:
-                unique_name_parts.add(normalized_name)
+                all_name_parts.append(normalized_name)
 
-    return unique_name_parts
+    return all_name_parts
 
 
 import functools
@@ -44,49 +50,62 @@ def normalize_word(name_part):
     split_characters = [x for x in normalized_name if not x.isalpha()]
     if split_characters:
         # replace non-alphabet letters with a space
-        normalized_name = functools.reduce(lambda s, sep: s.replace(sep, ' '), split_characters, normalized_name).strip()
+        normalized_name = functools.reduce(lambda s, sep: s.replace(sep, ' '), split_characters,
+                                           normalized_name).strip()
 
     # remove diacritics
     normalized_name = ''.join(x for x in unicodedata.normalize('NFKD', normalized_name))
     return normalized_name
 
 
-def most_common_names(id_to_name):
+def find_stop_words(id_to_name):
     """
-    TODO use n %% of these as stop-words?
+    Find the most common words in the corpus. Use them as stopwords. Use a higher percentage for stopwords from especially short words.
     """
     words = []
+    short_words = []
     for reference, names in id_to_name.items():
         name_parts = normalize_name_parts(names)
         for name_part in name_parts:
-            words.append(name_part)
+            if len(name_part) < 2:
+                continue
+            elif len(name_part) <= 4:
+                short_words.append(name_part)
+            else:
+                words.append(name_part)
 
-    stopword_count = 25  # TODO use dynamic value
+    different_words = set(words)
+    different_shortwords = set(short_words)
+    stopword_count = int(1 * len(words) / len(different_words))  # heuristic
+    stopword_count_short_words = int(2 * len(short_words) / len(different_shortwords))  # heuristic
 
-    counter = Counter()
+    word_counter = Counter()
+    short_word_counter = Counter()
 
-    counter.update(list(words))
-    most_common_words = set([word[0] for word in counter.most_common(stopword_count)])
-    return most_common_words
+    word_counter.update(list(words))
+    short_word_counter.update(list(short_words))
+    stop_words = set([word[0] for word in word_counter.most_common(stopword_count)])
+    stop_words_short = set([word[0] for word in short_word_counter.most_common(stopword_count_short_words)])
+    return stop_words.union(stop_words_short)
 
 
-def compute_phonetic_bin_lookup_table(id_to_name):
+def compute_phonetic_bin_lookup_table(id_to_name, stop_words):
     """
-            computation of hashmap of phonetic bin to list of list-entries, WIP
+        Computation of hashmap of phonetic bin to list of list-entries, WIP
+        TODO should distinguish between names, not just put all names of a subject in the same list
     """
-    dmeta = fuzzy.DMetaphone()
     bin_to_id = {}
     for reference, names in id_to_name.items():
-        unique_name_parts = normalize_name_parts(names)
+        unique_name_parts = set(normalize_name_parts(names))
         for name_part in unique_name_parts:
 
-            if len(name_part) < 4:
-                continue  # FIXME refine this restriction, only certain of the short words should be excluded. Instead check for stop words
+            if len(name_part) < 2 or name_part in stop_words:
+                continue
 
             try:
                 bins = dmeta(name_part)
             except UnicodeEncodeError:
-                continue  # FIXME ignores non-latin words silently
+                continue  # Ignores non-latin words silently. That's ok when input is latin alphabet only.
 
             for bin in bins:
                 if not bin in bin_to_id:  # if bin not already added to dictionary
@@ -101,28 +120,23 @@ def compute_phonetic_bin_lookup_table(id_to_name):
 
 
 def remove_outliers(bin_to_id, max_count):
-    # FIXME Poor mans removal for now. We should probably rather generate a list of stop words, and filter those out
-    # possibly in addition remove statistical outliers, bins that have super-many references. They don't help in search either.
     outliers = []
     for bin, references in bin_to_id.items():
-        if len(references) > max_count:
+        if len(references) > max_count:  # number of elements in the hashbin is greater than
+            # the number of subjects in total
             outliers.append(bin)
     filtered_dict = {key: bin_to_id[key] for key in bin_to_id if key not in outliers}
     return filtered_dict
 
 
-import resource
-
 from fuzzywuzzy import fuzz
 
 
-def search(name_string, bin_to_id):
-    # TODO find candidate matches, by creating a list of bins from the name, and returning all references that match those bins
-    # the candidates must then be filtered. A simple first version is to require fuzzywuzzy.fuzz.ratio(input, candidate) to be > 60
-    dmeta = fuzzy.DMetaphone()
-
+def search(name_string, bin_to_id, id_to_name, similarity_threshold=60):
+    # TODO give a boost when the number of bins that match are higher than 1
+    # TODO should distinguish between first name (less reliable match) and other names.
     bins = []
-    name_parts = normalize_name_parts([name_string])
+    name_parts = set(normalize_name_parts([name_string]))
     for name_part in name_parts:
         for bin in dmeta(name_part):
             bins.append(bin)
@@ -133,13 +147,16 @@ def search(name_string, bin_to_id):
             candidates_in_bin = bin_to_id[bin]
             for c in candidates_in_bin: candidates.add(c)
 
-    filtered_candidates = set()
+    filtered_candidates = []
     for candidate in candidates:
         candidate_names_in_sanction_entry = id_to_name[candidate]
         for list_entry_name in candidate_names_in_sanction_entry:
             similarity_ratio = fuzz.token_sort_ratio(list_entry_name, name_string)
-            if similarity_ratio >= 60:  # hardcoded lower limit
-                filtered_candidates.add(candidate)
+            if similarity_ratio >= similarity_threshold:  # hardcoded lower limit
+                element = (candidate, similarity_ratio, list_entry_name)
+                filtered_candidates.append(element)
+
+    filtered_candidates.sort(key=lambda tup: tup[1], reverse=True)
 
     return filtered_candidates
 
@@ -147,43 +164,60 @@ def search(name_string, bin_to_id):
 import sys
 
 
-def print_longest_overflow_bin_length(bin_to_id):
+def print_longest_overflow_bin_length(bin_to_id, subjectType):
     longest_list = 0
     bin_of_longest_list = None
     for bin, references in bin_to_id.items():
         if len(references) > longest_list:
             longest_list = len(references)
             bin_of_longest_list = bin
-    print("Longest overflow-bin had", longest_list, "items. With value", bin_of_longest_list)
+    print("Longest overflow-bin for subject type", subjectType, "had", longest_list, "items. With value",
+          bin_of_longest_list)
+
+
+def printSubjects(bin_to_id):
+    for reference, names in bin_to_id.items():
+        print(reference, names)
 
 
 if __name__ == "__main__":
-
     start = timer()
 
-    id_to_name = loadSanctions('eu_global_full_20180604.xml')
-    bin_to_id = compute_phonetic_bin_lookup_table(id_to_name)
+    (id_to_name_persons, id_to_name_entities) = loadSanctions('eu_global_full_20180604.xml')
+
+    stop_words_persons = find_stop_words(id_to_name_persons)
+    stop_words_entities = find_stop_words(id_to_name_entities)
+
+    bin_to_id_persons = compute_phonetic_bin_lookup_table(id_to_name_persons, stop_words_persons)
+    bin_to_id_entities = compute_phonetic_bin_lookup_table(id_to_name_entities, stop_words_entities)
 
     end = timer()
     print("Total time usage for loading: {} ms".format(int(10 ** 3 * (end - start) + 0.5)))
+    print("Most common name parts for persons are", stop_words_persons)
+    print("Most common name parts for entities are", stop_words_entities)
 
-    for reference, names in id_to_name.items():
-        # print(reference, names)
-        pass
 
-    print("Computed", len(bin_to_id), "phonetic bins for", len(id_to_name), "list entries.")
-    print_longest_overflow_bin_length(bin_to_id)
+    # printSubjects(bin_to_id_entities)
+    # printSubjects(bin_to_id_persons)
 
-    print("Most common name parts are", most_common_names(id_to_name))
+    print("Computed", len(bin_to_id_persons), "phonetic bins for", len(id_to_name_persons),
+          "list subjects of type person.")
+    print("Computed", len(bin_to_id_entities), "phonetic bins for", len(id_to_name_entities),
+          "list subjects of type entity.")
+    print_longest_overflow_bin_length(bin_to_id_persons, "person")
+    print_longest_overflow_bin_length(bin_to_id_entities, "entity")
 
-    memory_usage_bytes = sys.getsizeof(id_to_name) + sys.getsizeof(bin_to_id)
+    memory_usage_bytes = sys.getsizeof(id_to_name_entities) + sys.getsizeof(id_to_name_persons) \
+                         + sys.getsizeof(bin_to_id_persons) + sys.getsizeof(bin_to_id_entities)
     print("Memory usage of sanction-list data structures are", memory_usage_bytes / 2 ** 20, "MB")
 
-    test_name = "Anastasiya Nikolayevna KAPRANOVA"
+    test_name = "Anastasiya Nikolayevna KARPANOVA"
     start = timer()
-    candidates = search(test_name, bin_to_id)
+    matches = search(test_name, bin_to_id_persons, id_to_name_persons, similarity_threshold=80)
     end = timer()
-    print("\nFound", len(candidates), "candidates in search for", test_name)
-    for c in candidates:
-        print("-", id_to_name[c])
+    print("\nFound", len(matches), "matches in search for", test_name)
+    for m in matches:
+        (candidate, similarity_ratio, list_entry_name) = m
+        print("-", list_entry_name, candidate, str(similarity_ratio) + "%")
+
     print("Total time usage for searching: {} ns".format(int(10 ** 6 * (end - start) + 0.5)))
