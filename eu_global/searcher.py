@@ -14,10 +14,13 @@ dmeta = fuzzy.DMetaphone()
 def normalize_name_parts(names):
     all_name_parts = []
     for name in names:
+        split_characters = [x for x in name if not x.isalpha()]
+        if split_characters:
+            name = functools.reduce(lambda s, sep: s.replace(sep, ' '), split_characters,
+                                           name).strip()
         for name_part in name.split():
-            normalized_names = normalize_word(name_part)
-            for normalized_name in normalized_names:
-                all_name_parts.append(normalized_name)
+            normalized_name = normalize_word(name_part)
+            all_name_parts.append(normalized_name)
 
     return all_name_parts
 
@@ -26,18 +29,7 @@ import functools
 
 
 def normalize_word(word):
-    """
-    May split word into multiple parts as a result of normalization
-    """
-    normalized_name = word.lower()
-    split_characters = [x for x in normalized_name if not x.isalpha()]
-    if split_characters:
-        # replace non-alphabet letters with a space
-        normalized_name_parts = functools.reduce(lambda s, sep: s.replace(sep, ' '), split_characters,
-                                           normalized_name).strip()
-        return [remove_diacritics(x) for x in normalized_name_parts]
-
-    return [remove_diacritics(normalized_name)]
+    return remove_diacritics(word.lower())
 
 def remove_diacritics(word):
     return ''.join(x for x in unicodedata.normalize('NFKD', word))
