@@ -4,6 +4,8 @@ import fuzzy
 import unicodedata
 from timeit import default_timer as timer
 from collections import Counter
+from dataobjects import NamePart
+from dataobjects import NameAlias
 
 import eu_global
 
@@ -21,8 +23,12 @@ def loadSanctions(filename):
         for alias in subject.nameAlias:
             if not alias.strong == 'true':  # filter for now
                 continue
-            name = alias.wholeName
-            aliases.append(name)
+
+            name_parts = [NamePart(alias.firstName, True), NamePart(alias.wholeName.replace(alias.firstName, ""))]
+            name_alias = NameAlias(name_parts, alias.nameLanguage)
+
+            aliases.append(name_alias)
+
         if subject.subjectType.code == "person":
             id_to_name_persons[fixedRef] = aliases
         else:
@@ -44,7 +50,5 @@ if __name__ == "__main__":
     end = timer()
     print("Total time usage for loading: {} ms".format(int(10 ** 3 * (end - start) + 0.5)))
 
-
     printSubjects(id_to_name_entities)
     printSubjects(id_to_name_persons)
-

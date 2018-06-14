@@ -37,7 +37,7 @@ def remove_diacritics(word):
 
 def find_stop_words(id_to_name):
     """
-    Find the most common words in the corpus. Use them as stopwords. Use a higher percentage for stopwords from especially short words.
+    Finds the most common words in the corpus. Use them as stopwords. Uses a higher percentage for stopwords from especially short words.
     """
     words = []
     short_words = []
