@@ -45,7 +45,7 @@ def printSubjects(bin_to_id):
 if __name__ == "__main__":
     start = timer()
 
-    (id_to_name_persons, id_to_name_entities) = loadSanctions('eu_global_full_20180604.xml')
+    (id_to_name_persons, id_to_name_entities) = loadSanctions('eu_global_full_20180618.xml')
 
     end = timer()
     print("Total time usage for loading: {} ms".format(int(10 ** 3 * (end - start) + 0.5)))

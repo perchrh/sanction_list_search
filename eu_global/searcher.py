@@ -162,7 +162,7 @@ def printSubjects(bin_to_id):
 if __name__ == "__main__":
     start = timer()
 
-    (id_to_name_persons, id_to_name_entities) = loadSanctions('eu_global_full_20180604.xml')
+    (id_to_name_persons, id_to_name_entities) = loadSanctions('eu_global_full_20180618.xml')
 
     stop_words_persons = find_stop_words(id_to_name_persons)
     stop_words_entities = find_stop_words(id_to_name_entities)
