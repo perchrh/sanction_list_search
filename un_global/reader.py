@@ -55,6 +55,8 @@ for individual in individuals:
 
     if len(date_aliases) > 1:
         multiple_dates = multiple_dates + 1
+        print("debug: Multiple dates for entry below")
+
     print(fixedRef, name_aliases, [d.strftime("%Y-%m-%d") for d in date_aliases])
 
 print("Found", multiple_dates, "entries with multiple exact dates", 100.0*multiple_dates/len(individuals), "%")

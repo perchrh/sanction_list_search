@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from _datetime import datetime
+from datetime import datetime
 def datePeriodPrinter(DatePeriod):
     start_date_from = create_single_date(DatePeriod.Start.From)
     start_date_to = create_single_date(DatePeriod.Start.To)
@@ -83,7 +83,7 @@ for sanction_list in sources:
             date_prints = [d.strftime("%Y-%m-%d") for d in dates if d]
             if len(date_prints) > 1:
                 multiple_date_counter = multiple_date_counter + 1
-                print("Multiple dates here")
+                print("debug: Multiple dates for entry below")
 
             print(party.FixedRef, name_aliases, date_prints)
 
