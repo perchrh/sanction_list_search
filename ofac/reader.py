@@ -52,41 +52,45 @@ for sanction_list in sources:
 
     # print person names in list
 
+    persons = []
+    entities = []
+
     for party in sanctioned_parties:
         name_aliases = []
         date_aliases = []
         for profile in party.Profile:
-            if profile.PartySubTypeID == 4:  # consider only persons for now
-                for feature in profile.Feature:
-                    if feature.FeatureTypeID == 8: # birthdate
-                        for version in feature.FeatureVersion:
-                            # there is currently never more than version in the list, and its unclear how versions are to be marked current and outdated
-                            if version.ReliabilityID == 1561: #1561 means it's been proven false, so skip it
-                                continue
+            for feature in profile.Feature:
+                if feature.FeatureTypeID == 8: # birthdate
+                    for version in feature.FeatureVersion:
+                        # there is currently never more than version in the list, and its unclear how versions are to be marked current and outdated
+                        if version.ReliabilityID == 1561: #1561 means it's been proven false, so skip it
+                            continue
 
-                            for period in version.DatePeriod:
-                                date_aliases.append(period)
-                for identity in profile.Identity:
-                    for alias in identity.Alias:
-                        if alias.LowQuality == False:
-                            for name in alias.DocumentedName:
-                                parts = []
-                                for namepart in name.DocumentedNamePart:
-                                    namepart_value = namepart.NamePartValue # NamePartValue.ScriptID
-                                    if namepart_value.ScriptID == 215: #latin
-                                        namevalue = namepart_value.valueOf_
-                                        parts.append(namevalue)
-                                if parts:
-                                    name_aliases.append(parts)
+                        for period in version.DatePeriod:
+                            date_aliases.append(period)
+            for identity in profile.Identity:
+                for alias in identity.Alias:
+                    if alias.LowQuality == False:
+                        for name in alias.DocumentedName:
+                            parts = []
+                            for namepart in name.DocumentedNamePart:
+                                namepart_value = namepart.NamePartValue
+                                if namepart_value.ScriptID == 215: #latin
+                                    namevalue = namepart_value.valueOf_
+                                    parts.append(namevalue)
+                            if parts:
+                                name_aliases.append(parts)
         if name_aliases:
-            dates = [datePeriodPrinter(d) for d in date_aliases]
-            date_prints = [d.strftime("%Y-%m-%d") for d in dates if d]
-            if len(date_prints) > 1:
-                multiple_date_counter = multiple_date_counter + 1
-                print("debug: Multiple dates for entry below")
+            if profile.PartySubTypeID == 4:  #person
+                dates = [datePeriodPrinter(d) for d in date_aliases]
+                date_prints = [d.strftime("%Y-%m-%d") for d in dates if d]
 
-            print(party.FixedRef, name_aliases, date_prints)
+                persons.append((party.FixedRef, name_aliases, date_prints))
+            else: #not a person
+                entities.append((party.FixedRef, name_aliases))
 
-    print("Got", multiple_date_counter, "entries with multiple dates", 100.0*multiple_date_counter/len(sanctioned_parties), "%")
+for item in entities:
+    print(item)
 
-
+for item in persons:
+    print(item)
