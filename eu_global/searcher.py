@@ -5,6 +5,8 @@ import unicodedata
 from timeit import default_timer as timer
 from collections import Counter
 from reader import loadSanctions
+from dataobjects import NamePart
+from dataobjects import NameAlias
 
 import eu_global
 
@@ -13,14 +15,19 @@ dmeta = fuzzy.DMetaphone()
 
 def normalize_name_parts(names):
     all_name_parts = []
-    for name in names:
-        split_characters = [x for x in name if not x.isalpha()]
-        if split_characters:
-            name = functools.reduce(lambda s, sep: s.replace(sep, ' '), split_characters,
-                                           name).strip()
-        for name_part in name.split():
-            normalized_name = normalize_word(name_part)
-            all_name_parts.append(normalized_name)
+    for name_alias in names:
+        for name_part in name_alias.name_parts:
+            name_part_value = name_part.part
+            split_characters = [x for x in name_part_value if not x.isalpha()]
+            if split_characters:
+                name_part_value = functools.reduce(lambda s, sep: s.replace(sep, ' '), split_characters,
+                                             name_part_value).strip()
+                for name_part_part in name_part_value.split():
+                    normalized_name = normalize_word(name_part_part)
+                    all_name_parts.append(normalized_name)
+            else:
+                normalized_name = normalize_word(name_part_value)
+                all_name_parts.append(normalized_name)
 
     return all_name_parts
 
@@ -84,7 +91,7 @@ def compute_phonetic_bin_lookup_table(id_to_name, stop_words):
             except UnicodeEncodeError:
                 continue  # Ignores non-latin words silently. That's ok when input is latin alphabet only.
 
-            for bin in bins:
+            for bin in [b for b in bins if b]: #TODO investigate why the bin None is created
                 if not bin in bin_to_id:  # if bin not already added to dictionary
                     bin_to_id[bin] = []  # begin a new list of references
 
@@ -114,24 +121,30 @@ def search(name_string, bin_to_id, id_to_name, similarity_threshold=60):
     # TODO should distinguish between first name (less reliable match) and other names.
     # consider storing in each bin, a namepart object linking to its name linking to its subject, that has name.isFirstName:bool
 
+    name_parts = [NamePart(name_string)]
+    name_aliases = [NameAlias(name_parts, None)]
+    name_parts = set(normalize_name_parts(name_aliases))
+
     bins = []
-    name_parts = set(normalize_name_parts([name_string]))
     for name_part in name_parts:
         for bin in dmeta(name_part):
             bins.append(bin)
 
     candidates = set()
     for bin in bins:
-        if bin and bin in bin_to_id:
+        if bin in bin_to_id:
             candidates_in_bin = bin_to_id[bin]
-            for c in candidates_in_bin: candidates.add(c)
+            for c in candidates_in_bin:
+                # TODO check if norm. levensthein > 0.60, otherwise don't add
+                candidates.add(c)
 
+    # TODO count the number of bins that matched each candidate-alias
     filtered_candidates = []
     for candidate in candidates:
         candidate_names_in_sanction_entry = id_to_name[candidate]
         for list_entry_name in candidate_names_in_sanction_entry:
             similarity_ratio = fuzz.token_sort_ratio(list_entry_name, name_string)
-            if similarity_ratio >= similarity_threshold:  # hardcoded lower limit
+            if similarity_ratio >= similarity_threshold:
                 element = (candidate, similarity_ratio, list_entry_name)
                 filtered_candidates.append(element)
 
