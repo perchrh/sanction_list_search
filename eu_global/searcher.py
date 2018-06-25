@@ -151,7 +151,7 @@ def search(name_string, bin_to_id, id_to_name, similarity_threshold=60):
     missing_character_count = sum(map(len, name_parts_missed))
     phonetic_similarity_ratio = 100 * matching_character_count / (matching_character_count + missing_character_count) # TODO consider other approaches
 
-    # 3. look up candidate names, filter out matches that are really bad, sort the remaining matches by similarity ratio
+    # 4. look up candidate names, filter out matches that are really bad, sort the remaining matches by similarity ratio
     filtered_candidates = []
     for candidate in candidates:
         candidate_names_in_sanction_entry = id_to_name[candidate]
