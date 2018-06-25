@@ -21,7 +21,7 @@ def normalize_name_parts(names):
             split_characters = [x for x in name_part_value if not x.isalpha()]
             if split_characters:
                 name_part_value = functools.reduce(lambda s, sep: s.replace(sep, ' '), split_characters,
-                                             name_part_value).strip()
+                                                   name_part_value).strip()
                 for name_part_part in name_part_value.split():
                     normalized_name = normalize_word(name_part_part)
                     all_name_parts.add(normalized_name)
@@ -37,6 +37,7 @@ import functools
 
 def normalize_word(word):
     return remove_diacritics(word.lower())
+
 
 def remove_diacritics(word):
     return ''.join(x for x in unicodedata.normalize('NFKD', word))
@@ -87,7 +88,7 @@ def compute_phonetic_bin_lookup_table(id_to_name, stop_words):
                 continue
 
             try:
-                bins = [b for b in dmeta(name_part) if b] #dmeta sometimes outputs an empty 'None' bin, filter it out
+                bins = [b for b in dmeta(name_part) if b]  # dmeta sometimes outputs an empty 'None' bin, filter it out
             except UnicodeEncodeError:
                 continue  # Ignores non-latin words silently. That's ok when input is latin alphabet only.
 
@@ -95,7 +96,7 @@ def compute_phonetic_bin_lookup_table(id_to_name, stop_words):
                 if not bin in bin_to_id:  # if bin not already added to dictionary
                     bin_to_id[bin] = []  # begin a new list of references
 
-                bin_to_id[bin].append(reference)
+                bin_to_id[bin].append((reference, name_part))
 
     max_count = len(id_to_name) / 8  # if 100%/8 = 12.5% or more of the entries has it
     filtered_dict = remove_outliers(bin_to_id, max_count)
@@ -114,10 +115,10 @@ def remove_outliers(bin_to_id, max_count):
 
 
 from fuzzywuzzy import fuzz
+from Levenshtein import StringMatcher
 
 
 def search(name_string, bin_to_id, id_to_name, similarity_threshold=60):
-    # TODO give a boost when the number of bins that match are higher than 1
     # TODO should distinguish between first name (less reliable match) and other names.
     # consider storing in each bin, a namepart object linking to its name linking to its subject, that has name.isFirstName:bool
 
@@ -126,24 +127,30 @@ def search(name_string, bin_to_id, id_to_name, similarity_threshold=60):
     name_aliases = [NameAlias(name_parts, None)]
     name_parts = set(normalize_name_parts(name_aliases))
 
-    bins = []
+    bins = set()
     for name_part in name_parts:
-        name_part_bins = [b for b in dmeta(name_part) if b] #dmeta sometimes outputs an empty 'None' bin, filter it out
+        name_part_bins = [b for b in dmeta(name_part) if b]  # dmeta sometimes outputs an empty 'None' bin, filter it out
         for bin in name_part_bins:
-            bins.append(bin)
+            bins.add((bin, name_part))
 
-    #2. find candidates with one or more maching bins
+    # 2. find candidates with one or more matching bins
     candidates = set()
-    for bin in bins:
+    name_parts_matched = set()
+    for (bin, name_part) in bins:
         if bin in bin_to_id:
             candidates_in_bin = bin_to_id[bin]
             for c in candidates_in_bin:
-                # TODO check if norm. levensthein > 0.60, otherwise don't add. Must then store namepart in bin, together with candidate-id
-                candidates.add(c)
+                (candidate_id, candidate_name_part) = c
+                if StringMatcher.ratio(name_part, candidate_name_part) >= 0.6:
+                    candidates.add(candidate_id)
+                    name_parts_matched.add(name_part)
 
-    # TODO count the number of bins that matched each candidate-alias
+    matches = len(name_parts_matched)
+    misses = len(name_parts) - matches
+    print("Debug: {} matches, {} misses".format(matches, misses))
+    # TODO penalise misses
 
-    #3. look up candidate names, filter out matches that are really bad, sort the other matches on similarity ratio
+    # 3. look up candidate names, filter out matches that are really bad, sort the other matches on similarity ratio
     filtered_candidates = []
     for candidate in candidates:
         candidate_names_in_sanction_entry = id_to_name[candidate]
