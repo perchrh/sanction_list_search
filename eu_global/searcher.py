@@ -84,7 +84,7 @@ def compute_phonetic_bin_lookup_table(id_to_name, stop_words):
         unique_name_parts = set(normalize_name_parts(names))
         for name_part in unique_name_parts:
             if len(name_part) < 2 or name_part in stop_words:
-                # skip stop words and words of one character only. todo consider including stopwords, but penalise matches by stopword only
+                # skip stop words and words of one character only. TODO consider including stopwords, but penalise matches by stopword only
                 continue
 
             try:
@@ -141,6 +141,7 @@ def search(name_string, bin_to_id, id_to_name, similarity_threshold=60):
             candidates_in_bin = bin_to_id[bin]
             for c in candidates_in_bin:
                 (candidate_id, candidate_name_part) = c
+                # TODO check if gender and date(s) of the input entity matches the candidate entity, drop them if it does. id_to_name must then return (name, gender, exact_date_list, date_period_list)
                 if StringMatcher.ratio(name_part, candidate_name_part) >= 0.6:  # 0.6 = a little bit similar
                     candidates.add(candidate_id)
                     name_parts_matched.add(name_part)
@@ -177,8 +178,7 @@ def print_longest_overflow_bin_length(bin_to_id, subjectType):
         if len(references) > longest_list:
             longest_list = len(references)
             bin_of_longest_list = bin
-    print("Longest overflow-bin for subject type", subjectType, "had", longest_list, "items. With value",
-          bin_of_longest_list)
+    print("Longest overflow-bin for subject type {} had {} items. With value {}".format(subjectType, longest_list, bin_of_longest_list)
 
 
 def printSubjects(bin_to_id):
@@ -213,7 +213,7 @@ if __name__ == "__main__":
                          + sys.getsizeof(bin_to_id_persons) + sys.getsizeof(bin_to_id_entities)
     print("Memory usage of sanction-list data structures are", memory_usage_bytes / 2 ** 20, "MB")
 
-    test_name = "Anastasiya Nikolayevna KARPANOVA"
+    test_name = "Anastasiya Nikolayevna KARPANOVA" # TODO read a list of test queries from a csv file (firstname, lastname, gender, birth_date)
     start = timer()
     matches = search(test_name, bin_to_id_persons, id_to_name_persons, similarity_threshold=80)
     end = timer()
