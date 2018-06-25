@@ -31,7 +31,7 @@ def loadSanctions(filename):
             gender_of_alias = alias.gender # M, F or None
 
             name_parts = [NamePart(alias.firstName, True), NamePart(alias.wholeName.replace(alias.firstName, ""))]
-            name_alias = NameAlias(name_parts, alias.nameLanguage)
+            name_alias = NameAlias(name_parts, alias.nameLanguage, gender_of_alias)
 
             aliases.append(name_alias)
 
@@ -39,9 +39,9 @@ def loadSanctions(filename):
             birth_dates_strings = [b.birthdate for b in subject.birthdate]
             birth_dates = [datetime.strptime(b, '%Y-%m-%d') for b in birth_dates_strings if b]
 
-            id_to_name_persons[fixedRef] = aliases
+            id_to_name_persons[fixedRef] = (aliases, birth_dates)
         else:
-            id_to_name_entities[fixedRef] = aliases
+            id_to_name_entities[fixedRef] = (aliases, [])
 
     return (id_to_name_persons, id_to_name_entities)
 

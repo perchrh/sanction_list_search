@@ -49,8 +49,9 @@ def find_stop_words(id_to_name):
     """
     words = []
     short_words = []
-    for reference, names in id_to_name.items():
-        name_parts = normalize_name_parts(names)
+    for reference, list_subject in id_to_name.items():
+        (aliases, birthdates) = list_subject
+        name_parts = normalize_name_parts(aliases)
         for name_part in name_parts:
             if len(name_part) < 2:
                 continue
@@ -80,8 +81,9 @@ def compute_phonetic_bin_lookup_table(id_to_name, stop_words):
         TODO should distinguish between names, not just put all names of a subject in the same list
     """
     bin_to_id = {}
-    for reference, names in id_to_name.items():
-        unique_name_parts = set(normalize_name_parts(names))
+    for reference, list_subject in id_to_name.items():
+        (aliases, birthdates) = list_subject
+        unique_name_parts = set(normalize_name_parts(aliases))
         for name_part in unique_name_parts:
             if len(name_part) < 2 or name_part in stop_words:
                 # skip stop words and words of one character only. TODO consider including stopwords, but penalise matches by stopword only
@@ -155,12 +157,13 @@ def search(name_string, bin_to_id, id_to_name, similarity_threshold=60):
     # 4. look up candidate names, filter out matches that are really bad, sort the remaining matches by similarity ratio
     filtered_candidates = []
     for candidate in candidates:
-        candidate_names_in_sanction_entry = id_to_name[candidate]
-        for list_entry_name in candidate_names_in_sanction_entry:
-            string_similarity_ratio = fuzz.token_sort_ratio(list_entry_name, name_string)
+        list_subject = id_to_name[candidate]
+        (list_subject_aliases, birthdays) = list_subject
+        for candidate_name in list_subject_aliases:
+            string_similarity_ratio = fuzz.token_sort_ratio(candidate_name, name_string)
             similarity_ratio = max(string_similarity_ratio, phonetic_similarity_ratio) # TODO is this good enough?
             if similarity_ratio >= similarity_threshold:
-                element = (candidate, similarity_ratio, list_entry_name)
+                element = (candidate, similarity_ratio, candidate_name)
                 filtered_candidates.append(element)
 
     filtered_candidates.sort(key=lambda tup: tup[1], reverse=True)
@@ -178,7 +181,7 @@ def print_longest_overflow_bin_length(bin_to_id, subjectType):
         if len(references) > longest_list:
             longest_list = len(references)
             bin_of_longest_list = bin
-    print("Longest overflow-bin for subject type {} had {} items. With value {}".format(subjectType, longest_list, bin_of_longest_list)
+    print("Longest overflow-bin for subject type {} had {} items. With value {}".format(subjectType, longest_list, bin_of_longest_list))
 
 
 def printSubjects(bin_to_id):

@@ -1,7 +1,8 @@
 class NameAlias:
-    def __init__(self, name_parts: list = None, name_language: str = None):
+    def __init__(self, name_parts: list = None, name_language: str = None, gender: str = None):
         self.name_parts = [n for n in name_parts if n.is_not_empty()]
         self.name_language = name_language
+        self.gender = gender
 
     def __repr__(self):
         return ' '.join(str(x) for x in self.name_parts)
