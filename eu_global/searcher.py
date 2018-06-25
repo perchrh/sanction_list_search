@@ -141,21 +141,23 @@ def search(name_string, bin_to_id, id_to_name, similarity_threshold=60):
             candidates_in_bin = bin_to_id[bin]
             for c in candidates_in_bin:
                 (candidate_id, candidate_name_part) = c
-                if StringMatcher.ratio(name_part, candidate_name_part) >= 0.6:
+                if StringMatcher.ratio(name_part, candidate_name_part) >= 0.6:  # 0.6 = a little bit similar
                     candidates.add(candidate_id)
                     name_parts_matched.add(name_part)
 
-    matches = len(name_parts_matched)
-    misses = len(name_parts) - matches
-    print("Debug: {} matches, {} misses".format(matches, misses))
-    # TODO penalise misses
+    # 3. calculate phonetic string similarity
+    name_parts_missed = name_parts - name_parts_matched
+    matching_character_count = sum(map(len, name_parts_matched))
+    missing_character_count = sum(map(len, name_parts_missed))
+    phonetic_similarity_ratio = 100 * matching_character_count / (matching_character_count + missing_character_count) # TODO consider other approaches
 
-    # 3. look up candidate names, filter out matches that are really bad, sort the other matches on similarity ratio
+    # 3. look up candidate names, filter out matches that are really bad, sort the remaining matches by similarity ratio
     filtered_candidates = []
     for candidate in candidates:
         candidate_names_in_sanction_entry = id_to_name[candidate]
         for list_entry_name in candidate_names_in_sanction_entry:
-            similarity_ratio = fuzz.token_sort_ratio(list_entry_name, name_string)
+            string_similarity_ratio = fuzz.token_sort_ratio(list_entry_name, name_string)
+            similarity_ratio = max(string_similarity_ratio, phonetic_similarity_ratio) # TODO is this good enough?
             if similarity_ratio >= similarity_threshold:
                 element = (candidate, similarity_ratio, list_entry_name)
                 filtered_candidates.append(element)
