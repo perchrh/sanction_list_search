@@ -4,11 +4,11 @@ import fuzzy
 import unicodedata
 from timeit import default_timer as timer
 from collections import Counter
-from reader import loadSanctions
+
+from reader import load_sanctions
 from dataobjects import NamePart
 from dataobjects import NameAlias
 
-import eu_global
 
 dmeta = fuzzy.DMetaphone()
 
@@ -242,7 +242,7 @@ def import_test_subjects(filename):
 if __name__ == "__main__":
     start = timer()
 
-    (id_to_name_persons, id_to_name_entities) = loadSanctions('eu_global_full_20180618.xml')
+    (id_to_name_persons, id_to_name_entities) = load_sanctions('eu_global_full_20180618.xml')
 
     stop_words_persons = find_stop_words(id_to_name_persons)
     stop_words_entities = find_stop_words(id_to_name_entities)
