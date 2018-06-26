@@ -161,6 +161,7 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
                         bad_candidates.add(candidate_id)
                         continue  # skip to next candidate
                 # TODO also check birthdate ranges
+                # TODO could optionally check birth country
 
                 if StringMatcher.ratio(name_part, candidate_name_part) >= 0.6:  # 0.6 = a little bit similar
                     candidates.add(candidate_id)
