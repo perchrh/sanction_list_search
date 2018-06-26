@@ -172,11 +172,10 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
     matching_character_count = sum(map(len, name_parts_matched))
     missing_character_count = sum(map(len, name_parts_missed))
     phonetic_similarity_ratio_characters = 100 * matching_character_count / (matching_character_count + missing_character_count)
-    phonetic_similarity_ratio_words = 100 * (len(name_parts_matched) / (len(name_parts)))
-    #phonetic_similarity_ratio = (phonetic_similarity_ratio_characters + phonetic_similarity_ratio_words) / 2.0 # TODO consider other approaches
     phonetic_similarity_ratio = phonetic_similarity_ratio_characters
 
-    # TODO also count how many names we are not matching in the list subject's name alias
+    # TODO also count how many name parts we are not matching in the list subject's name alias
+    # slightly penalise matches where there are missing name parts
 
     # 4. look up candidate names, filter out matches that are really bad, sort the remaining matches by similarity ratio
     filtered_candidates = []
@@ -185,11 +184,14 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
         (list_subject_aliases, birthdays) = list_subject
         for candidate_name in list_subject_aliases:
             string_similarity_ratio = fuzz.token_sort_ratio(candidate_name, name_string)
+
+            #buffs
             string_similarity_ratio += phonetic_similarity_ratio / 20.0  # boost phonetically similar matches
+
+            #debuffs
             similarity_ratio = min(string_similarity_ratio, 100)
             if len(name_string) <= 12:
-                #debuff short matches
-                # call me Hacky McHack. #TODO verify
+                # call me Hacky McHack. #TODO verify, consider a dynamic percentage
                 similarity_ratio *= 0.9  # short matches must be extra good
 
             if similarity_ratio >= similarity_threshold:
