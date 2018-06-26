@@ -120,7 +120,7 @@ from fuzzywuzzy import fuzz
 from Levenshtein import StringMatcher
 
 
-def search(name_string, bin_to_id, id_to_name, similarity_threshold=60):
+def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, similarity_threshold=60):
     # TODO should distinguish between first name (less reliable match) and other names.
     # consider storing in each bin, a namepart object linking to its name linking to its subject, that has name.isFirstName:bool
 
@@ -138,12 +138,30 @@ def search(name_string, bin_to_id, id_to_name, similarity_threshold=60):
     # 2. find candidates with one or more matching bins
     candidates = set()
     name_parts_matched = set()
+    bad_candidates = [] # candidates found to be bad matches for the query
     for (bin, name_part) in bins:
         if bin in bin_to_id:
             candidates_in_bin = bin_to_id[bin]
             for c in candidates_in_bin:
                 (candidate_id, candidate_name_part) = c
-                # TODO check if gender and date(s) of the input entity matches the candidate entity, drop them if it does. id_to_name must then return (name, gender, exact_date_list, date_period_list)
+                if candidate_id in bad_candidates:
+                    # we already know this candidate is a bad match
+                    continue
+
+                (names, birthdates) = id_to_name[candidate_id]
+                registered_genders = set([x.gender for x in names])
+                if gender and gender not in registered_genders:
+                    # mark the candidate as bad, so that we don't have to consider it again for this search query
+                    bad_candidates.add(candidate_id)
+                    continue  # skip to next candidate
+                if birthdate and birthdates:
+                    # exact birthdates are known
+                    if birthdate not in birthdates:
+                        # mark the candidate as bad, so that we don't have to consider it again for this search query
+                        bad_candidates.add(candidate_id)
+                        continue  # skip to next candidate
+                # TODO also check birthdate ranges
+
                 if StringMatcher.ratio(name_part, candidate_name_part) >= 0.6:  # 0.6 = a little bit similar
                     candidates.add(candidate_id)
                     name_parts_matched.add(name_part)
@@ -152,7 +170,7 @@ def search(name_string, bin_to_id, id_to_name, similarity_threshold=60):
     name_parts_missed = name_parts - name_parts_matched
     matching_character_count = sum(map(len, name_parts_matched))
     missing_character_count = sum(map(len, name_parts_missed))
-    phonetic_similarity_ratio = 100 * matching_character_count / (matching_character_count + missing_character_count) # TODO consider other approaches
+    phonetic_similarity_ratio = 100 * matching_character_count / (matching_character_count + missing_character_count)  # TODO consider other approaches
 
     # 4. look up candidate names, filter out matches that are really bad, sort the remaining matches by similarity ratio
     filtered_candidates = []
@@ -161,7 +179,7 @@ def search(name_string, bin_to_id, id_to_name, similarity_threshold=60):
         (list_subject_aliases, birthdays) = list_subject
         for candidate_name in list_subject_aliases:
             string_similarity_ratio = fuzz.token_sort_ratio(candidate_name, name_string)
-            similarity_ratio = max(string_similarity_ratio, phonetic_similarity_ratio) # TODO is this good enough?
+            similarity_ratio = max(string_similarity_ratio, phonetic_similarity_ratio)  # TODO is this good enough?
             if similarity_ratio >= similarity_threshold:
                 element = (candidate, similarity_ratio, candidate_name)
                 filtered_candidates.append(element)
@@ -216,9 +234,11 @@ if __name__ == "__main__":
                          + sys.getsizeof(bin_to_id_persons) + sys.getsizeof(bin_to_id_entities)
     print("Memory usage of sanction-list data structures are", memory_usage_bytes / 2 ** 20, "MB")
 
-    test_name = "Anastasiya Nikolayevna KARPANOVA" # TODO read a list of test queries from a csv file (firstname, lastname, gender, birth_date)
+    test_name = "Anastasiya Nikolayevna KARPANOVA"  # TODO read a list of test queries from a csv file (firstname, lastname, gender, birth_date)
+    test_gender = None
+    test_birthdate = None
     start = timer()
-    matches = search(test_name, bin_to_id_persons, id_to_name_persons, similarity_threshold=80)
+    matches = search(test_name, bin_to_id_persons, id_to_name_persons, gender=test_gender, birthdate=test_birthdate, similarity_threshold=80)
     end = timer()
     print("\nFound", len(matches), "matches in search for", test_name)
     for m in matches:

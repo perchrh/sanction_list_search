@@ -36,7 +36,7 @@ def loadSanctions(filename):
             aliases.append(name_alias)
 
         if subject.subjectType.code == "person":
-            birth_dates_strings = [b.birthdate for b in subject.birthdate]
+            birth_dates_strings = [b.birthdate for b in subject.birthdate if b.circa != "true"] #TODO support year only etc
             birth_dates = [datetime.strptime(b, '%Y-%m-%d') for b in birth_dates_strings if b]
 
             id_to_name_persons[fixedRef] = (aliases, birth_dates)
