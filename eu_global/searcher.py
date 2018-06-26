@@ -18,7 +18,7 @@ def normalize_name_parts(names):
     for name_alias in names:
         for name_part in name_alias.name_parts:
             name_part_value = name_part.part
-            split_characters = [x for x in name_part_value if not x.isalpha()]
+            split_characters = [x for x in name_part_value if not x.isalpha() and not x.isdigit()]
             if split_characters:
                 name_part_value = functools.reduce(lambda s, sep: s.replace(sep, ' '), split_characters,
                                                    name_part_value).strip()
@@ -36,11 +36,11 @@ import functools
 
 
 def normalize_word(word):
-    return remove_diacritics(word.lower())
+    return remove_diacritics(word.lower()).replace("ø", "o").replace("æ", "ae").replace("å", "aa")
 
 
 def remove_diacritics(word):
-    return ''.join(x for x in unicodedata.normalize('NFKD', word))
+    return ''.join(c for c in unicodedata.normalize('NFKD', word) if unicodedata.category(c) != 'Mn')
 
 
 def find_stop_words(id_to_name):
@@ -77,7 +77,7 @@ def find_stop_words(id_to_name):
 
 def compute_phonetic_bin_lookup_table(id_to_name, stop_words):
     """
-        Computation of hashmap of phonetic bin to list of list-entries, WIP
+        Computation of hashmap of phonetic bin to list of list-entries
         TODO should distinguish between names, not just put all names of a subject in the same list
     """
     bin_to_id = {}
@@ -138,7 +138,7 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
     # 2. find candidates with one or more matching bins
     candidates = set()
     name_parts_matched = set()
-    bad_candidates = [] # candidates found to be bad matches for the query
+    bad_candidates = []  # candidates found to be bad matches for the query
     for (bin, name_part) in bins:
         if bin in bin_to_id:
             candidates_in_bin = bin_to_id[bin]
@@ -149,16 +149,16 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
                     continue
 
                 (names, birthdates) = id_to_name[candidate_id]
-                registered_genders = set([x.gender for x in names])
-                if gender and gender not in registered_genders:
+                registered_genders = [g for g in [x.gender for x in names] if g] #filter out None. TODO filter out earlier
+                if gender and registered_genders and gender not in registered_genders:
                     # mark the candidate as bad, so that we don't have to consider it again for this search query
-                    bad_candidates.add(candidate_id)
+                    bad_candidates.append(candidate_id)
                     continue  # skip to next candidate
                 if birthdate and birthdates:
                     # exact birthdates are known
                     if birthdate not in birthdates:
                         # mark the candidate as bad, so that we don't have to consider it again for this search query
-                        bad_candidates.add(candidate_id)
+                        bad_candidates.append(candidate_id)
                         continue  # skip to next candidate
                 # TODO also check birthdate ranges
                 # TODO could optionally check birth country
@@ -171,7 +171,9 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
     name_parts_missed = name_parts - name_parts_matched
     matching_character_count = sum(map(len, name_parts_matched))
     missing_character_count = sum(map(len, name_parts_missed))
-    phonetic_similarity_ratio = 100 * matching_character_count / (matching_character_count + missing_character_count)  # TODO consider other approaches
+    phonetic_similarity_ratio_one = 100 * matching_character_count / (matching_character_count + missing_character_count)  # TODO consider other approaches
+    phonetic_similarity_ratio_two = len(name_parts_matched) / (len(name_parts))
+    phonetic_similarity_ratio = (phonetic_similarity_ratio_one + phonetic_similarity_ratio_two)/2.0
 
     # 4. look up candidate names, filter out matches that are really bad, sort the remaining matches by similarity ratio
     filtered_candidates = []
@@ -180,7 +182,8 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
         (list_subject_aliases, birthdays) = list_subject
         for candidate_name in list_subject_aliases:
             string_similarity_ratio = fuzz.token_sort_ratio(candidate_name, name_string)
-            similarity_ratio = max(string_similarity_ratio, phonetic_similarity_ratio)  # TODO is this good enough?
+            string_similarity_ratio += phonetic_similarity_ratio / 20.0 # boost phonetically similar matches
+            similarity_ratio = min(string_similarity_ratio, 100)  # TODO is this good enough?
             if similarity_ratio >= similarity_threshold:
                 element = (candidate, similarity_ratio, candidate_name)
                 filtered_candidates.append(element)
@@ -206,6 +209,24 @@ def print_longest_overflow_bin_length(bin_to_id, subjectType):
 def printSubjects(bin_to_id):
     for reference, names in bin_to_id.items():
         print(reference, names)
+
+
+import csv
+import io
+
+
+def import_test_subjects(filename):
+    with io.open(filename, 'r', newline='', encoding='utf-8') as csvfile:
+        cvs_reader = csv.DictReader(csvfile, delimiter=';')
+        try:
+            subjects = []
+            rows = list(cvs_reader)  # read it all into memory
+            for row in rows:
+                value = (row['firstname'], row['lastname'], row['birthdate'], row['gender'])
+                subjects.append(value)
+            return subjects
+        except csv.Error as e:
+            sys.exit('file {}, line {}: {}'.format(filename, cvs_reader.line_num, e))
 
 
 if __name__ == "__main__":
@@ -235,15 +256,19 @@ if __name__ == "__main__":
                          + sys.getsizeof(bin_to_id_persons) + sys.getsizeof(bin_to_id_entities)
     print("Memory usage of sanction-list data structures are", memory_usage_bytes / 2 ** 20, "MB")
 
-    test_name = "Anastasiya Nikolayevna KARPANOVA"  # TODO read a list of test queries from a csv file (firstname, lastname, gender, birth_date)
-    test_gender = None
-    test_birthdate = None
+    test_subjects = import_test_subjects("internal_test_queries.csv")
+    test_subject_count = len(test_subjects)
     start = timer()
-    matches = search(test_name, bin_to_id_persons, id_to_name_persons, gender=test_gender, birthdate=test_birthdate, similarity_threshold=80)
-    end = timer()
-    print("\nFound", len(matches), "matches in search for", test_name)
-    for m in matches:
-        (candidate, similarity_ratio, list_entry_name) = m
-        print("-", list_entry_name, candidate, str(similarity_ratio) + "%")
 
-    print("Total time usage for searching: {} ns".format(int(10 ** 6 * (end - start) + 0.5)))
+    for (firstname, lastname, birthdate, gender) in test_subjects:
+        wholename = firstname + " " + lastname
+        matches = search(wholename, bin_to_id_persons, id_to_name_persons, gender=gender, birthdate=birthdate, similarity_threshold=85)
+        if matches:
+            print("\nFound", len(matches), "matches in search for", wholename)
+            for m in matches:
+                (candidate_id, similarity_ratio, list_entry_name) = m
+                print("-", list_entry_name, candidate_id, str(similarity_ratio) + "%")
+    end = timer()
+    time_use_ns = int((end - start) + 0.5)
+
+    print("\nTotal time usage for searching {} entries : {}s ({}ns per query)".format(test_subject_count, time_use_ns, int(10**6*time_use_ns/test_subject_count +0.5)))
