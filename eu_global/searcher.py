@@ -149,7 +149,7 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
                     continue
 
                 (names, birthdates) = id_to_name[candidate_id]
-                registered_genders = [g for g in [x.gender for x in names] if g] #filter out None. TODO filter out earlier
+                registered_genders = [g for g in [x.gender for x in names] if g]  # filter out None
                 if gender and registered_genders and gender not in registered_genders:
                     # mark the candidate as bad, so that we don't have to consider it again for this search query
                     bad_candidates.append(candidate_id)
@@ -160,7 +160,7 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
                         # mark the candidate as bad, so that we don't have to consider it again for this search query
                         bad_candidates.append(candidate_id)
                         continue  # skip to next candidate
-                # TODO also check birthdate ranges
+                # TODO also check birthdate ranges, or birthyear list only
                 # TODO could optionally check birth country
 
                 if StringMatcher.ratio(name_part, candidate_name_part) >= 0.6:  # 0.6 = a little bit similar
@@ -171,9 +171,12 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
     name_parts_missed = name_parts - name_parts_matched
     matching_character_count = sum(map(len, name_parts_matched))
     missing_character_count = sum(map(len, name_parts_missed))
-    phonetic_similarity_ratio_one = 100 * matching_character_count / (matching_character_count + missing_character_count)  # TODO consider other approaches
-    phonetic_similarity_ratio_two = len(name_parts_matched) / (len(name_parts))
-    phonetic_similarity_ratio = (phonetic_similarity_ratio_one + phonetic_similarity_ratio_two)/2.0
+    phonetic_similarity_ratio_characters = 100 * matching_character_count / (matching_character_count + missing_character_count)
+    phonetic_similarity_ratio_words = 100 * (len(name_parts_matched) / (len(name_parts)))
+    #phonetic_similarity_ratio = (phonetic_similarity_ratio_characters + phonetic_similarity_ratio_words) / 2.0 # TODO consider other approaches
+    phonetic_similarity_ratio = phonetic_similarity_ratio_characters
+
+    # TODO also count how many names we are not matching in the list subject's name alias
 
     # 4. look up candidate names, filter out matches that are really bad, sort the remaining matches by similarity ratio
     filtered_candidates = []
@@ -182,8 +185,13 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
         (list_subject_aliases, birthdays) = list_subject
         for candidate_name in list_subject_aliases:
             string_similarity_ratio = fuzz.token_sort_ratio(candidate_name, name_string)
-            string_similarity_ratio += phonetic_similarity_ratio / 20.0 # boost phonetically similar matches
-            similarity_ratio = min(string_similarity_ratio, 100)  # TODO is this good enough?
+            string_similarity_ratio += phonetic_similarity_ratio / 20.0  # boost phonetically similar matches
+            similarity_ratio = min(string_similarity_ratio, 100)
+            if len(name_string) <= 12:
+                #debuff short matches
+                # call me Hacky McHack. #TODO verify
+                similarity_ratio *= 0.9  # short matches must be extra good
+
             if similarity_ratio >= similarity_threshold:
                 element = (candidate, similarity_ratio, candidate_name)
                 filtered_candidates.append(element)
@@ -245,10 +253,8 @@ if __name__ == "__main__":
     print("Most common name parts for persons are", stop_words_persons)
     print("Most common name parts for entities are", stop_words_entities)
 
-    print("Computed", len(bin_to_id_persons), "phonetic bins for", len(id_to_name_persons),
-          "list subjects of type person.")
-    print("Computed", len(bin_to_id_entities), "phonetic bins for", len(id_to_name_entities),
-          "list subjects of type entity.")
+    print("Computed", len(bin_to_id_persons), "phonetic bins for", len(id_to_name_persons), "list subjects of type person.")
+    print("Computed", len(bin_to_id_entities), "phonetic bins for", len(id_to_name_entities), "list subjects of type entity.")
     print_longest_overflow_bin_length(bin_to_id_persons, "person")
     print_longest_overflow_bin_length(bin_to_id_entities, "entity")
 
@@ -256,7 +262,7 @@ if __name__ == "__main__":
                          + sys.getsizeof(bin_to_id_persons) + sys.getsizeof(bin_to_id_entities)
     print("Memory usage of sanction-list data structures are", memory_usage_bytes / 2 ** 20, "MB")
 
-    test_subjects = import_test_subjects("internal_test_queries.csv")
+    test_subjects = import_test_subjects("internal_test_queries.csv")  # file intentionally not in git
     test_subject_count = len(test_subjects)
     start = timer()
 
@@ -271,4 +277,5 @@ if __name__ == "__main__":
     end = timer()
     time_use_ns = int((end - start) + 0.5)
 
-    print("\nTotal time usage for searching {} entries : {}s ({}ns per query)".format(test_subject_count, time_use_ns, int(10**6*time_use_ns/test_subject_count +0.5)))
+    print("\nTotal time usage for searching {} entries : {}s ({}ns per query)".format(test_subject_count, time_use_ns,
+                                                                                      int(10 ** 6 * time_use_ns / test_subject_count + 0.5)))
