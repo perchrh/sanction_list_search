@@ -192,9 +192,7 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
             string_similarity_ratio = fuzz.token_sort_ratio(normalized_candidate_name, normalized_query_name)
 
             # buffs
-            if string_similarity_ratio < similarity_threshold: # TODO always give the buff?
-                string_similarity_ratio += phonetic_similarity_ratio / 20.0  # boost phonetically similar matches
-
+            string_similarity_ratio += similarity_threshold/100.0 * phonetic_similarity_ratio / 16  # boost phonetically similar matches
             similarity_ratio = min(string_similarity_ratio, 100)
 
             # debuffs
@@ -202,13 +200,13 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
             if len(normalized_query_name) <= short_name_length_limit:
                 # short matches must be extra good
                 shortness = max(0, short_name_length_limit - len(normalized_query_name))
-                debuff = 4 * (similarity_threshold / 100.0) * shortness #TODO verify
+                debuff = 4 * (similarity_threshold / 100.0) * shortness  # TODO verify
                 similarity_ratio -= debuff
 
             input_word_count = 1 if normalized_query_name.find(" ") < 0 else len(normalized_query_name.split())  # make sure to split only on whitespace, TODO optimize
             candidate_word_count = 1 if normalized_candidate_name.find(" ") < 0 else len(normalized_candidate_name.split())
             missing_words = max(0, candidate_word_count - input_word_count)  # > 0 if candidate has unmatched names
-            similarity_ratio -= missing_words * 2  # 0 if missing 0 words, -4 if missing 2 words, etc
+            similarity_ratio -= missing_words * 2.5 * similarity_threshold/100.0  # 0 if missing 0 words, -4 if missing 2 words, etc
 
             if similarity_ratio >= similarity_threshold:
                 element = (candidate, similarity_ratio, candidate_name)

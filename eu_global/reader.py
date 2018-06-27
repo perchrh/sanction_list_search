@@ -28,7 +28,7 @@ def load_sanctions(filename):
 
             gender_of_alias = alias.gender  # M, F or None
 
-            name_parts = [NamePart(alias.wholeName)] #TODO true to correctly separate firstname and other names
+            name_parts = [NamePart(alias.wholeName)] #TODO correctly separate firstname and other names
             name_alias = NameAlias(name_parts, alias.nameLanguage, gender_of_alias)
 
             aliases.append(name_alias)
