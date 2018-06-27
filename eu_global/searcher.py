@@ -9,30 +9,37 @@ from reader import load_sanctions
 from dataobjects import NamePart
 from dataobjects import NameAlias
 
-
 dmeta = fuzzy.DMetaphone()
 
 
-def normalize_name_parts(names):
+def normalize_aliases(name_aliases):
     all_name_parts = set()
-    for name_alias in names:
-        for name_part in name_alias.name_parts:
-            name_part_value = name_part.part
-            split_characters = [x for x in name_part_value if not x.isalpha() and not x.isdigit()]
-            if split_characters:
-                name_part_value = functools.reduce(lambda s, sep: s.replace(sep, ' '), split_characters,
-                                                   name_part_value).strip()
-                for name_part_part in name_part_value.split():
-                    normalized_name = normalize_word(name_part_part)
-                    all_name_parts.add(normalized_name)
-            else:
-                normalized_name = normalize_word(name_part_value)
-                all_name_parts.add(normalized_name)
+    for name_alias in name_aliases:
+        normalized_name_alias = normalize_name_alias(name_alias)
+        for value in normalized_name_alias:
+            all_name_parts.add(value)
 
     return all_name_parts
 
 
 import functools
+
+
+def normalize_name_alias(name_alias):
+    all_name_parts = set()
+    for name_part in name_alias.name_parts:
+        name_part_value = name_part.part
+        split_characters = [x for x in name_part_value if not x.isalpha() and not x.isdigit()]
+        if split_characters:
+            name_part_value = functools.reduce(lambda s, sep: s.replace(sep, ' '), split_characters,
+                                               name_part_value).strip()
+            for name_part_part in name_part_value.split():
+                normalized_name = normalize_word(name_part_part)
+                all_name_parts.add(normalized_name)
+        else:
+            normalized_name = normalize_word(name_part_value)
+            all_name_parts.add(normalized_name)
+    return all_name_parts
 
 
 def normalize_word(word):
@@ -51,7 +58,7 @@ def find_stop_words(id_to_name):
     short_words = []
     for reference, list_subject in id_to_name.items():
         (aliases, birthdates) = list_subject
-        name_parts = normalize_name_parts(aliases)
+        name_parts = normalize_aliases(aliases)
         for name_part in name_parts:
             if len(name_part) < 2:
                 continue
@@ -83,7 +90,7 @@ def compute_phonetic_bin_lookup_table(id_to_name, stop_words):
     bin_to_id = {}
     for reference, list_subject in id_to_name.items():
         (aliases, birthdates) = list_subject
-        unique_name_parts = set(normalize_name_parts(aliases))
+        unique_name_parts = set(normalize_aliases(aliases))
         for name_part in unique_name_parts:
             if len(name_part) < 2 or name_part in stop_words:
                 # skip stop words and words of one character only. TODO consider including stopwords, but penalise matches by stopword only
@@ -124,10 +131,11 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
     # TODO should distinguish between first name (less reliable match) and other names.
     # consider storing in each bin, a namepart object linking to its name linking to its subject, that has name.isFirstName:bool
 
+    # TODO consider searching per name alias instead of per candidates (list of aliases)
+
     # 1. calculate the phonetics bins of the input name
     name_parts = [NamePart(name_string)]
-    name_aliases = [NameAlias(name_parts, None)]
-    name_parts = set(normalize_name_parts(name_aliases))
+    name_parts = normalize_name_alias(NameAlias(name_parts, None))
 
     bins = set()
     for name_part in name_parts:
@@ -171,28 +179,36 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
     name_parts_missed = name_parts - name_parts_matched
     matching_character_count = sum(map(len, name_parts_matched))
     missing_character_count = sum(map(len, name_parts_missed))
-    phonetic_similarity_ratio_characters = 100 * matching_character_count / (matching_character_count + missing_character_count)
-    phonetic_similarity_ratio = phonetic_similarity_ratio_characters
-
-    # TODO also count how many name parts we are not matching in the list subject's name alias
-    # slightly penalise matches where there are missing name parts
+    phonetic_similarity_ratio = 100 * matching_character_count / (matching_character_count + missing_character_count)
 
     # 4. look up candidate names, filter out matches that are really bad, sort the remaining matches by similarity ratio
+    normalized_query_name = " ".join(name_parts)
     filtered_candidates = []
     for candidate in candidates:
         list_subject = id_to_name[candidate]
         (list_subject_aliases, birthdays) = list_subject
         for candidate_name in list_subject_aliases:
-            string_similarity_ratio = fuzz.token_sort_ratio(candidate_name, name_string)
+            normalized_candidate_name = " ".join(normalize_name_alias(candidate_name))  # TODO precompute this
+            string_similarity_ratio = fuzz.token_sort_ratio(normalized_candidate_name, normalized_query_name)
 
-            #buffs
-            string_similarity_ratio += phonetic_similarity_ratio / 20.0  # boost phonetically similar matches
+            # buffs
+            if string_similarity_ratio < similarity_threshold: # TODO always give the buff?
+                string_similarity_ratio += phonetic_similarity_ratio / 20.0  # boost phonetically similar matches
 
-            #debuffs
             similarity_ratio = min(string_similarity_ratio, 100)
-            if len(name_string) <= 12:
-                # call me Hacky McHack. #TODO verify, consider a dynamic percentage
-                similarity_ratio *= 0.9  # short matches must be extra good
+
+            # debuffs
+            short_name_length_limit = 12
+            if len(normalized_query_name) <= short_name_length_limit:
+                # short matches must be extra good
+                shortness = max(0, short_name_length_limit - len(normalized_query_name))
+                debuff = 4 * (similarity_threshold / 100.0) * shortness #TODO verify
+                similarity_ratio -= debuff
+
+            input_word_count = 1 if normalized_query_name.find(" ") < 0 else len(normalized_query_name.split())  # make sure to split only on whitespace, TODO optimize
+            candidate_word_count = 1 if normalized_candidate_name.find(" ") < 0 else len(normalized_candidate_name.split())
+            missing_words = max(0, candidate_word_count - input_word_count)  # > 0 if candidate has unmatched names
+            similarity_ratio -= missing_words * 2  # 0 if missing 0 words, -4 if missing 2 words, etc
 
             if similarity_ratio >= similarity_threshold:
                 element = (candidate, similarity_ratio, candidate_name)
@@ -268,16 +284,27 @@ if __name__ == "__main__":
     test_subject_count = len(test_subjects)
     start = timer()
 
+    total_matches = 0
+    total_records = 0
     for (firstname, lastname, birthdate, gender) in test_subjects:
         wholename = firstname + " " + lastname
-        matches = search(wholename, bin_to_id_persons, id_to_name_persons, gender=gender, birthdate=birthdate, similarity_threshold=85)
+        matches = search(wholename, bin_to_id_persons, id_to_name_persons, gender=gender, birthdate=birthdate, similarity_threshold=90)
         if matches:
-            print("\nFound", len(matches), "matches in search for", wholename)
+            total_matches += 1
+            total_records += len(matches)
+            seen = set()
+            print("\nMatches for {}:".format(wholename))
             for m in matches:
                 (candidate_id, similarity_ratio, list_entry_name) = m
-                print("-", list_entry_name, candidate_id, str(similarity_ratio) + "%")
+
+                if not candidate_id in seen:  # TODO should filter out these before coming so far
+                    message = ("- {} (EU-{}) - {:.2f}%".format(list_entry_name, candidate_id, similarity_ratio))
+                    print(message)
+                    seen.add(candidate_id)
+
     end = timer()
     time_use_ns = int((end - start) + 0.5)
 
-    print("\nTotal time usage for searching {} entries : {}s ({}ns per query)".format(test_subject_count, time_use_ns,
-                                                                                      int(10 ** 6 * time_use_ns / test_subject_count + 0.5)))
+    print("\nFound in total {} matches on {} list-subjects. Searched for {} customers.".format(total_records, total_matches, test_subject_count))
+    print("Total time usage for searching: {}s ({}ns per query)".format(test_subject_count, time_use_ns,
+                                                                                    int(10 ** 6 * time_use_ns / test_subject_count + 0.5)))
