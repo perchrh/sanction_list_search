@@ -306,5 +306,4 @@ if __name__ == "__main__":
     time_use_ns = int((end - start) + 0.5)
 
     print("\nFound in total {} matches on {} list-subjects. Searched for {} customers.".format(total_records, total_matches, test_subject_count))
-    print("Total time usage for searching: {}s ({}ns per query)".format(test_subject_count, time_use_ns,
-                                                                                    int(10 ** 6 * time_use_ns / test_subject_count + 0.5)))
+    print("Total time usage for searching: {}s ({}ns per query)".format(time_use_ns, int(10 ** 6 * time_use_ns / test_subject_count + 0.5)))
