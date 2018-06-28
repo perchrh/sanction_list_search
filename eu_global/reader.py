@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 
-import fuzzy
 from timeit import default_timer as timer
 from dataobjects import NamePart
 from dataobjects import NameAlias
 from datetime import datetime
 
 import eu_global as parser
-
-dmeta = fuzzy.DMetaphone()
 
 
 def load_sanctions(filename):
