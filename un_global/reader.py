@@ -7,6 +7,9 @@ sanctions = un_global.parse('consolidated.xml', silence=True)
 entities = sanctions.ENTITIES.ENTITY
 individuals = sanctions.INDIVIDUALS.INDIVIDUAL
 
+print("Found {} entities".format(len(entities)))
+print("Found {} persons".format(len(individuals)))
+
 for entity in entities:
     if entity.DELISTED_ON:
         continue  # don't include delisted entries
@@ -55,7 +58,6 @@ for individual in individuals:
 
     if len(date_aliases) > 1:
         multiple_dates = multiple_dates + 1
-        print("debug: Multiple dates for entry below")
 
     print(fixedRef, name_aliases, [d.strftime("%Y-%m-%d") for d in date_aliases])
 
