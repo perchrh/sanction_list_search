@@ -124,14 +124,14 @@ def remove_outliers(bin_to_id, max_count):
 
 
 from fuzzywuzzy import fuzz
-from Levenshtein import StringMatcher
+from Levenshtein import StringMatcher as levenshtein_distance
 
 
 def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, similarity_threshold=60):
     # TODO should distinguish between first name (less reliable match) and other names.
     # consider storing in each bin, a namepart object linking to its name linking to its subject, that has name.isFirstName:bool
 
-    # TODO consider searching per name alias instead of per candidates (list of aliases)
+    # TODO consider searching per name alias instead of per candidate (list of aliases)
 
     # 1. calculate the phonetics bins of the input name
     name_parts = [NamePart(name_string)]
@@ -171,7 +171,7 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
                 # TODO also check birthdate ranges, or birthyear list only
                 # TODO could optionally check birth country
 
-                if StringMatcher.ratio(name_part, candidate_name_part) >= 0.6:  # 0.6 = a little bit similar
+                if levenshtein_distance.ratio(name_part, candidate_name_part) >= 0.6:  # 0.6 = a little bit similar
                     candidates.add(candidate_id)
                     name_parts_matched.add(name_part)
 
@@ -198,15 +198,15 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
             # debuffs
             short_name_length_limit = 12
             if len(normalized_query_name) <= short_name_length_limit:
-                # short matches must be extra good
+                # short matches must be extra good. Reduces false positives.
                 shortness = max(0, short_name_length_limit - len(normalized_query_name))
                 debuff = 4 * (similarity_threshold / 100.0) * shortness  # TODO verify
                 similarity_ratio -= debuff
 
-            input_word_count = 1 if normalized_query_name.find(" ") < 0 else len(normalized_query_name.split())  # make sure to split only on whitespace, TODO optimize
+            input_word_count = 1 if normalized_query_name.find(" ") < 0 else len(normalized_query_name.split())  # makes sure to split only on whitespace, TODO optimize
             candidate_word_count = 1 if normalized_candidate_name.find(" ") < 0 else len(normalized_candidate_name.split())
             missing_words = max(0, candidate_word_count - input_word_count)  # > 0 if candidate has unmatched names
-            similarity_ratio -= missing_words * 2.5 * similarity_threshold/100.0  # 0 if missing 0 words, -4 if missing 2 words, etc
+            similarity_ratio -= max(10, missing_words * 2.5 * similarity_threshold/100.0)  # 0 if missing 0 words, -4 if missing 2 words, etc
 
             if similarity_ratio >= similarity_threshold:
                 element = (candidate, similarity_ratio, candidate_name)
