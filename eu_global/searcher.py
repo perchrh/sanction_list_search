@@ -217,8 +217,6 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
     return filtered_candidates
 
 
-import sys
-
 
 def print_longest_overflow_bin_length(bin_to_id, subjectType):
     longest_list = 0
@@ -234,10 +232,19 @@ def printSubjects(bin_to_id):
     for reference, names in bin_to_id.items():
         print(reference, names)
 
+def memory_usage_resource():
+    import resource # not portable across platforms
+    rusage_denom = 1024.
+    if sys.platform == 'darwin':
+        # ... it seems that in OSX the output is different units ...
+        rusage_denom = rusage_denom * rusage_denom
+    mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / rusage_denom
+    return mem
+
 
 import csv
 import io
-
+import sys
 
 def import_test_subjects(filename):
     with io.open(filename, 'r', newline='', encoding='utf-8') as csvfile:
@@ -254,6 +261,7 @@ def import_test_subjects(filename):
 
 
 if __name__ == "__main__":
+    mem_start = memory_usage_resource()
     start = timer()
 
     (id_to_name_persons, id_to_name_entities) = load_sanctions('eu_global_full_20180618.xml')
@@ -265,6 +273,8 @@ if __name__ == "__main__":
     bin_to_id_entities = compute_phonetic_bin_lookup_table(id_to_name_entities, stop_words_entities)
 
     end = timer()
+    mem_end = memory_usage_resource()
+
     print("Total time usage for loading: {} ms".format(int(10 ** 3 * (end - start) + 0.5)))
     print("Most common name parts for persons are", stop_words_persons)
     print("Most common name parts for entities are", stop_words_entities)
@@ -274,9 +284,7 @@ if __name__ == "__main__":
     print_longest_overflow_bin_length(bin_to_id_persons, "person")
     print_longest_overflow_bin_length(bin_to_id_entities, "entity")
 
-    memory_usage_bytes = sys.getsizeof(id_to_name_entities) + sys.getsizeof(id_to_name_persons) \
-                         + sys.getsizeof(bin_to_id_persons) + sys.getsizeof(bin_to_id_entities)
-    print("Memory usage of sanction-list data structures are", memory_usage_bytes / 2 ** 20, "MB")
+    print("Memory usage of sanction-list data structures are", mem_end - mem_start, "MB")
 
     test_subjects = import_test_subjects("internal_test_queries.csv")  # file intentionally not in git
     test_subject_count = len(test_subjects)
