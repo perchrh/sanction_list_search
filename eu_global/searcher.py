@@ -158,7 +158,7 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
 
                 (names, birthdates) = id_to_name[candidate_id]
                 registered_genders = [g for g in [x.gender for x in names] if g]  # filter out None
-                if gender and registered_genders and gender not in registered_genders:
+                if gender and len(registered_genders) == 1 and gender not in registered_genders:
                     # mark the candidate as bad, so that we don't have to consider it again for this search query
                     bad_candidates.append(candidate_id)
                     continue  # skip to next candidate
