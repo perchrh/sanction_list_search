@@ -277,7 +277,8 @@ def import_test_subjects(filename):
 
 
 def execute_test_queries():
-    test_subjects = import_test_subjects("internal_test_queries.csv")  # file intentionally not in git
+    #test_subjects = import_test_subjects("internal_test_queries.csv")  # file intentionally not in git
+    test_subjects = import_test_subjects("test_queries.csv")
     test_subject_count = len(test_subjects)
     start = timer()
     total_matches = 0
