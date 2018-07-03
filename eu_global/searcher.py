@@ -188,14 +188,12 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
         (list_subject_aliases, birthdays) = list_subject
         for candidate_name in list_subject_aliases:
             normalized_candidate_name = " ".join(normalize_name_alias(candidate_name))  # TODO precompute this for better performance
-            string_similarity_ratio = fuzz.token_sort_ratio(normalized_candidate_name, normalized_query_name)
+            similarity_ratio = fuzz.token_sort_ratio(normalized_candidate_name, normalized_query_name)
 
             # buffs
-            if phonetic_similarity_ratio >= similarity_threshold:
-                # boost phonetically similar matches
-                boost_from_phonetic_similarity = similarity_threshold / 100.0 * phonetic_similarity_ratio / 16
-                string_similarity_ratio += boost_from_phonetic_similarity
-            similarity_ratio = min(string_similarity_ratio, 100)
+            # boost phonetically similar matches
+            boost_from_phonetic_similarity = similarity_threshold / 100.0 * phonetic_similarity_ratio / 16
+            similarity_ratio += boost_from_phonetic_similarity
 
             # debuffs
             short_name_length_limit = 12
@@ -210,6 +208,8 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
             missing_words = max(0, candidate_word_count - input_word_count)  # > 0 if candidate has unmatched names
             missing_words_penalty = min(10, missing_words * 2.5 * similarity_threshold / 100.0)
             similarity_ratio -= missing_words_penalty  # 0 if missing 0 words, -4 if missing 2 words, etc
+
+            similarity_ratio = max(0, min(similarity_ratio, 100)) # normalize range after applying buffs and debuffs
 
             if similarity_ratio >= similarity_threshold:
                 element = (candidate_id, similarity_ratio, candidate_name)
@@ -285,7 +285,7 @@ def execute_test_queries():
     total_records = 0
     for (firstname, lastname, birthdate, gender) in test_subjects:
         wholename = firstname + " " + lastname
-        matches = search(wholename, bin_to_id_persons, id_to_name_persons, gender=gender, birthdate=birthdate, similarity_threshold=85)
+        matches = search(wholename, bin_to_id_persons, id_to_name_persons, gender=gender, birthdate=birthdate, similarity_threshold=88)
         if matches:
             total_matches += 1
             total_records += len(matches)
