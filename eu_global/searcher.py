@@ -85,7 +85,6 @@ def find_stop_words(id_to_name):
 def compute_phonetic_bin_lookup_table(id_to_name, stop_words):
     """
         Computation of hashmap of phonetic bin to list of list-entries
-        TODO should distinguish between names, not just put all names of a subject in the same list
     """
     bin_to_id = {}
     for reference, list_subject in id_to_name.items():
@@ -131,7 +130,7 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
     # TODO should distinguish between first name (less reliable match) and other names.
     # consider storing in each bin, a namepart object linking to its name linking to its subject, that has name.isFirstName:bool
 
-    # TODO consider searching per name alias instead of per candidate (list of aliases)
+    # TODO consider searching per name alias instead of per candidate (list of aliases), requires a different data structure for lookups
 
     # 1. calculate the phonetics bins of the input name
     name_parts = [NamePart(name_string)]
@@ -184,15 +183,18 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
     # 4. look up candidate names, filter out matches that are really bad, sort the remaining matches by similarity ratio
     normalized_query_name = " ".join(name_parts)
     filtered_candidates = []
-    for candidate in candidates:
-        list_subject = id_to_name[candidate]
+    for candidate_id in candidates:
+        list_subject = id_to_name[candidate_id]
         (list_subject_aliases, birthdays) = list_subject
         for candidate_name in list_subject_aliases:
-            normalized_candidate_name = " ".join(normalize_name_alias(candidate_name))  # TODO precompute this
+            normalized_candidate_name = " ".join(normalize_name_alias(candidate_name))  # TODO precompute this for better performance
             string_similarity_ratio = fuzz.token_sort_ratio(normalized_candidate_name, normalized_query_name)
 
             # buffs
-            string_similarity_ratio += similarity_threshold/100.0 * phonetic_similarity_ratio / 16  # boost phonetically similar matches
+            if phonetic_similarity_ratio >= similarity_threshold:
+                # boost phonetically similar matches
+                boost_from_phonetic_similarity = similarity_threshold / 100.0 * phonetic_similarity_ratio / 16
+                string_similarity_ratio += boost_from_phonetic_similarity
             similarity_ratio = min(string_similarity_ratio, 100)
 
             # debuffs
@@ -206,15 +208,25 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
             input_word_count = 1 if normalized_query_name.find(" ") < 0 else len(normalized_query_name.split())  # makes sure to split only on whitespace, TODO optimize
             candidate_word_count = 1 if normalized_candidate_name.find(" ") < 0 else len(normalized_candidate_name.split())
             missing_words = max(0, candidate_word_count - input_word_count)  # > 0 if candidate has unmatched names
-            similarity_ratio -= max(10, missing_words * 2.5 * similarity_threshold/100.0)  # 0 if missing 0 words, -4 if missing 2 words, etc
+            missing_words_penalty = min(10, missing_words * 2.5 * similarity_threshold / 100.0)
+            similarity_ratio -= missing_words_penalty  # 0 if missing 0 words, -4 if missing 2 words, etc
 
             if similarity_ratio >= similarity_threshold:
-                element = (candidate, similarity_ratio, candidate_name)
+                element = (candidate_id, similarity_ratio, candidate_name)
                 filtered_candidates.append(element)
 
     filtered_candidates.sort(key=lambda tup: tup[1], reverse=True)
 
-    return filtered_candidates
+    unique_candidates = []
+    seen_candidates = set()
+    for c in filtered_candidates:
+        # only report one match against each list-subject, the best matching alias
+        (candidate_id, similarity_ratio, candidate_name) = c
+        if candidate_id not in seen_candidates:
+            unique_candidates.append(c)
+            seen_candidates.add(candidate_id)
+
+    return unique_candidates
 
 
 
@@ -232,6 +244,7 @@ def printSubjects(bin_to_id):
     for reference, names in bin_to_id.items():
         print(reference, names)
 
+
 def memory_usage_resource():
     import resource # not portable across platforms
     rusage_denom = 1024.
@@ -245,6 +258,7 @@ def memory_usage_resource():
 import csv
 import io
 import sys
+
 
 def import_test_subjects(filename):
     # reads a semi-colon value separated file, one person per list
@@ -262,9 +276,32 @@ def import_test_subjects(filename):
             sys.exit('file {}, line {}: {}'.format(filename, cvs_reader.line_num, e))
 
 
+def execute_test_queries():
+    test_subjects = import_test_subjects("internal_test_queries.csv")  # file intentionally not in git
+    test_subject_count = len(test_subjects)
+    start = timer()
+    total_matches = 0
+    total_records = 0
+    for (firstname, lastname, birthdate, gender) in test_subjects:
+        wholename = firstname + " " + lastname
+        matches = search(wholename, bin_to_id_persons, id_to_name_persons, gender=gender, birthdate=birthdate, similarity_threshold=85)
+        if matches:
+            total_matches += 1
+            total_records += len(matches)
+            print("\nMatches for {}:".format(wholename))
+            for m in matches:
+                (candidate_id, similarity_ratio, candidate_name) = m
+                message = ("- {} (EU-{}) - {:.2f}%".format(candidate_name, candidate_id, similarity_ratio))
+                print(message)
+    end = timer()
+    time_use_s = end - start
+    print("\nFound in total {} matches on {} list-subjects. Searched for {} customers.".format(total_records, total_matches, test_subject_count))
+    print("Total time usage for searching: {}s ({}ns per query)".format(int(time_use_s + 0.5), int(10 ** 6 * time_use_s / test_subject_count + 0.5)))
+
+
 if __name__ == "__main__":
     mem_start = memory_usage_resource()
-    start = timer()
+    load_start = timer()
 
     (id_to_name_persons, id_to_name_entities) = load_sanctions('eu_global_full_20180618.xml')
 
@@ -274,10 +311,10 @@ if __name__ == "__main__":
     bin_to_id_persons = compute_phonetic_bin_lookup_table(id_to_name_persons, stop_words_persons)
     bin_to_id_entities = compute_phonetic_bin_lookup_table(id_to_name_entities, stop_words_entities)
 
-    end = timer()
+    load_end = timer()
     mem_end = memory_usage_resource()
 
-    print("Total time usage for loading: {} ms".format(int(10 ** 3 * (end - start) + 0.5)))
+    print("Total time usage for loading: {} ms".format(int(10 ** 3 * (load_end - load_start) + 0.5)))
     print("Most common name parts for persons are", stop_words_persons)
     print("Most common name parts for entities are", stop_words_entities)
 
@@ -288,30 +325,4 @@ if __name__ == "__main__":
 
     print("Memory usage of sanction-list data structures are", mem_end - mem_start, "MB")
 
-    test_subjects = import_test_subjects("internal_test_queries.csv")  # file intentionally not in git
-    test_subject_count = len(test_subjects)
-    start = timer()
-
-    total_matches = 0
-    total_records = 0
-    for (firstname, lastname, birthdate, gender) in test_subjects:
-        wholename = firstname + " " + lastname
-        matches = search(wholename, bin_to_id_persons, id_to_name_persons, gender=gender, birthdate=birthdate, similarity_threshold=90)
-        if matches:
-            total_matches += 1
-            total_records += len(matches)
-            seen = set()
-            print("\nMatches for {}:".format(wholename))
-            for m in matches:
-                (candidate_id, similarity_ratio, list_entry_name) = m
-
-                if not candidate_id in seen:  # TODO should filter out these before coming so far
-                    message = ("- {} (EU-{}) - {:.2f}%".format(list_entry_name, candidate_id, similarity_ratio))
-                    print(message)
-                    seen.add(candidate_id)
-
-    end = timer()
-    time_use_s = end-start
-
-    print("\nFound in total {} matches on {} list-subjects. Searched for {} customers.".format(total_records, total_matches, test_subject_count))
-    print("Total time usage for searching: {}s ({}ns per query)".format(int(time_use_s + 0.5), int(10 ** 6 * time_use_s / test_subject_count + 0.5)))
+    execute_test_queries()
