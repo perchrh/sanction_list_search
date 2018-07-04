@@ -43,8 +43,11 @@ def normalize_name_alias(name_alias):
 
 
 def normalize_word(word):
-    return remove_diacritics(word.lower()).replace("ø", "o").replace("æ", "ae").replace("å", "aa")
+    return replace_nordic_letters(remove_diacritics(word.lower()))
 
+
+def replace_nordic_letters(word):
+    return word.replace("ø", "o").replace("æ", "ae").replace("å", "aa").replace("ä", "a").replace("ö", "o")
 
 def remove_diacritics(word):
     return ''.join(c for c in unicodedata.normalize('NFKD', word) if unicodedata.category(c) != 'Mn')
@@ -277,8 +280,8 @@ def import_test_subjects(filename):
 
 
 def execute_test_queries():
-    #test_subjects = import_test_subjects("internal_test_queries.csv")  # file intentionally not in git
     test_subjects = import_test_subjects("test_queries.csv")
+    test_subjects = import_test_subjects("internal_test_queries.csv")  # file intentionally not in git
     test_subject_count = len(test_subjects)
     start = timer()
     total_matches = 0
