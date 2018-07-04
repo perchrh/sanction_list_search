@@ -192,6 +192,7 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
         for candidate_name in list_subject_aliases:
             normalized_candidate_name = " ".join(normalize_name_alias(candidate_name))  # TODO precompute this for better performance
             similarity_ratio = fuzz.token_sort_ratio(normalized_candidate_name, normalized_query_name)
+            exact_match = similarity_ratio == 100
 
             # buffs
             # boost phonetically similar matches
@@ -203,7 +204,7 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
             if len(normalized_query_name) <= short_name_length_limit:
                 # short matches must be extra good. Reduces false positives.
                 shortness = max(0, short_name_length_limit - len(normalized_query_name))
-                debuff = 4 * (similarity_threshold / 100.0) * shortness  # TODO verify
+                debuff = 2 * (similarity_threshold / 100.0) * shortness  # TODO verify
                 similarity_ratio -= debuff
 
             input_word_count = 1 if normalized_query_name.find(" ") < 0 else len(normalized_query_name.split())  # makes sure to split only on whitespace, TODO optimize
@@ -213,6 +214,8 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
             similarity_ratio -= missing_words_penalty  # 0 if missing 0 words, -4 if missing 2 words, etc
 
             similarity_ratio = max(0, min(similarity_ratio, 100)) # normalize range after applying buffs and debuffs
+            if not exact_match and similarity_ratio == 100:
+                similarity_ratio = 99.9 # present all non-exact matches as no more than 99.9
 
             if similarity_ratio >= similarity_threshold:
                 element = (candidate_id, similarity_ratio, candidate_name)
@@ -281,14 +284,14 @@ def import_test_subjects(filename):
 
 def execute_test_queries():
     test_subjects = import_test_subjects("test_queries.csv")
-    test_subjects = import_test_subjects("internal_test_queries.csv")  # file intentionally not in git
+    #test_subjects = import_test_subjects("internal_test_queries.csv")  # file intentionally not in git
     test_subject_count = len(test_subjects)
     start = timer()
     total_matches = 0
     total_records = 0
     for (firstname, lastname, birthdate, gender) in test_subjects:
         wholename = firstname + " " + lastname
-        matches = search(wholename, bin_to_id_persons, id_to_name_persons, gender=gender, birthdate=birthdate, similarity_threshold=88)
+        matches = search(wholename, bin_to_id_persons, id_to_name_persons, gender=gender, birthdate=birthdate, similarity_threshold=90)
         if matches:
             total_matches += 1
             total_records += len(matches)
