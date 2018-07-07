@@ -194,34 +194,36 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
             similarity_ratio = fuzz.token_sort_ratio(normalized_candidate_name, normalized_query_name)
             exact_match = similarity_ratio == 100
 
-            # buffs
-            # boost phonetically similar matches
-            boost_from_phonetic_similarity = similarity_threshold / 100.0 * phonetic_similarity_ratio / 16
-            similarity_ratio += boost_from_phonetic_similarity
+            if not exact_match:
+                # 1. apply boosts:
 
-            # debuffs
-            short_name_length_limit = 12
-            if len(normalized_query_name) <= short_name_length_limit:
-                # short matches must be extra good. Reduces false positives.
-                shortness = max(0, short_name_length_limit - len(normalized_query_name))
-                debuff = 2 * (similarity_threshold / 100.0) * shortness  # TODO verify
-                similarity_ratio -= debuff
+                # boost phonetically similar matches
+                boost_from_phonetic_similarity = similarity_threshold / 100.0 * phonetic_similarity_ratio / 16
+                similarity_ratio += boost_from_phonetic_similarity
 
-            input_word_count = 1 if normalized_query_name.find(" ") < 0 else len(normalized_query_name.split())  # makes sure to split only on whitespace, TODO optimize
-            candidate_word_count = 1 if normalized_candidate_name.find(" ") < 0 else len(normalized_candidate_name.split())
-            missing_words = max(0, candidate_word_count - input_word_count)  # > 0 if candidate has unmatched names
-            missing_words_penalty = min(10, missing_words * 2.5 * similarity_threshold / 100.0)
-            similarity_ratio -= missing_words_penalty  # 0 if missing 0 words, -4 if missing 2 words, etc
+                # 2. apply penalties:
 
-            similarity_ratio = max(0, min(similarity_ratio, 100)) # normalize range after applying buffs and debuffs
-            if not exact_match and similarity_ratio == 100:
-                similarity_ratio = 99.9 # present all non-exact matches as no more than 99.9
+                short_name_length_limit = 12
+                if len(normalized_query_name) <= short_name_length_limit:
+                    # short matches must be extra good. Reduces false positives.
+                    shortness = max(0, short_name_length_limit - len(normalized_query_name))
+                    debuff = 2 * (similarity_threshold / 100.0) * shortness  # TODO verify
+                    similarity_ratio -= debuff
+
+                input_word_count = 1 if normalized_query_name.find(" ") < 0 else len(normalized_query_name.split())  # makes sure to split only on whitespace, TODO optimize
+                candidate_word_count = 1 if normalized_candidate_name.find(" ") < 0 else len(normalized_candidate_name.split())
+                missing_words = max(0, candidate_word_count - input_word_count)  # > 0 if candidate has unmatched names
+                missing_words_penalty = min(10, missing_words * 2.5 * similarity_threshold / 100.0)
+                similarity_ratio -= missing_words_penalty  # 0 if missing 0 words, -4 if missing 2 words, etc
+
+                # 3. normalize ratio after applying boosts and penalties
+                similarity_ratio = max(0, min(similarity_ratio, 99.9)) # present all non-exact matches as no more than 99.9
 
             if similarity_ratio >= similarity_threshold:
                 element = (candidate_id, similarity_ratio, candidate_name)
                 filtered_candidates.append(element)
 
-    filtered_candidates.sort(key=lambda tup: tup[1], reverse=True)
+    filtered_candidates.sort(key=lambda tup: tup[1], reverse=True) # sort by ratio, descending
 
     unique_candidates = []
     seen_candidates = set()
