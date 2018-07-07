@@ -248,11 +248,6 @@ def print_longest_overflow_bin_length(bin_to_id, subjectType):
     print("Longest overflow-bin for subject type {} had {} items. With value {}".format(subjectType, longest_list, bin_of_longest_list))
 
 
-def printSubjects(bin_to_id):
-    for reference, names in bin_to_id.items():
-        print(reference, names)
-
-
 def memory_usage_resource():
     import resource # not portable across platforms
     rusage_denom = 1024.
@@ -310,7 +305,6 @@ def execute_test_queries():
 
 if __name__ == "__main__":
     mem_start = memory_usage_resource()
-    load_start = timer()
 
     (id_to_name_persons, id_to_name_entities) = load_sanctions('eu_global_full_20180618.xml')
 
@@ -320,16 +314,14 @@ if __name__ == "__main__":
     bin_to_id_persons = compute_phonetic_bin_lookup_table(id_to_name_persons, stop_words_persons)
     bin_to_id_entities = compute_phonetic_bin_lookup_table(id_to_name_entities, stop_words_entities)
 
-    load_end = timer()
     mem_end = memory_usage_resource()
 
-    print("Total time usage for loading: {} ms".format(int(10 ** 3 * (load_end - load_start) + 0.5)))
     print("Most common name parts for persons are", stop_words_persons)
     print("Most common name parts for entities are", stop_words_entities)
 
     print("Computed", len(bin_to_id_persons), "phonetic bins for", len(id_to_name_persons), "list subjects of type person.")
-    print("Computed", len(bin_to_id_entities), "phonetic bins for", len(id_to_name_entities), "list subjects of type entity.")
     print_longest_overflow_bin_length(bin_to_id_persons, "person")
+    print("Computed", len(bin_to_id_entities), "phonetic bins for", len(id_to_name_entities), "list subjects of type entity.")
     print_longest_overflow_bin_length(bin_to_id_entities, "entity")
 
     print("Memory usage of sanction-list data structures are", mem_end - mem_start, "MB")
