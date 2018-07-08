@@ -280,25 +280,40 @@ def import_test_subjects(filename):
 
 
 def execute_test_queries():
-    test_subjects = import_test_subjects("test_queries.csv")
-    #test_subjects = import_test_subjects("internal_test_queries.csv")  # file intentionally not in git
+    filename = "test_queries.csv"
+    #filename = "internal_test_queries.csv" # file intentionally not in git
+    test_subjects = import_test_subjects(filename)
     test_subject_count = len(test_subjects)
     start = timer()
     total_matches = 0
     total_records = 0
+    all_results = []
+    counter = 0
+    print("Searching for {} test-subjects read from file '{}'".format(test_subject_count, filename))
     for (firstname, lastname, birthdate, gender) in test_subjects:
+        workdone = counter/ test_subject_count
+
         wholename = firstname + " " + lastname
-        matches = search(wholename, bin_to_id_persons, id_to_name_persons, gender=gender, birthdate=birthdate, similarity_threshold=90)
+        matches = search(wholename, bin_to_id_persons, id_to_name_persons, gender=gender, birthdate=birthdate, similarity_threshold=80)
         if matches:
             total_matches += 1
             total_records += len(matches)
-            print("\nMatches for {}:".format(wholename))
             for m in matches:
                 (candidate_id, similarity_ratio, candidate_name) = m
-                message = ("- {} (EU-{}) - {:.2f}%".format(candidate_name, candidate_id, similarity_ratio))
-                print(message)
+                result = (wholename, birthdate, gender, candidate_name, "EU_{}".format(candidate_id), similarity_ratio)
+                all_results.append(result)
+        print("\rProgress: [{0:50s}] {1:.1f}%".format('#' * int(workdone * 50), workdone * 100), end="", flush=True)
+        counter += 1
+
     end = timer()
     time_use_s = end - start
+
+    # sort the output on similarity ratio before printing
+    all_results.sort(key=lambda tup: tup[5], reverse=True)  # sort by ratio, descending
+    for result in all_results:
+        (wholename, birthdate, gender, candidate_name, list_entry_id, similarity_ratio) = result
+        print("{}, {}, {} - {}, {} - {:.2f}".format(wholename, birthdate, gender, candidate_name, list_entry_id, similarity_ratio))
+
     print("\nFound in total {} matches on {} list-subjects. Searched for {} customers.".format(total_records, total_matches, test_subject_count))
     print("Total time usage for searching: {}s ({}ns per query)".format(int(time_use_s + 0.5), int(10 ** 6 * time_use_s / test_subject_count + 0.5)))
 
@@ -306,7 +321,7 @@ def execute_test_queries():
 if __name__ == "__main__":
     mem_start = memory_usage_resource()
 
-    (id_to_name_persons, id_to_name_entities) = load_sanctions('eu_global_full_20180618.xml')
+    (id_to_name_persons, id_to_name_entities) = load_sanctions('eu_global_full.xml')
 
     stop_words_persons = find_stop_words(id_to_name_persons)
     stop_words_entities = find_stop_words(id_to_name_entities)
