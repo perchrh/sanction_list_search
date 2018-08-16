@@ -214,8 +214,10 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
                 input_word_count = 1 if normalized_query_name.find(" ") < 0 else len(normalized_query_name.split())  # makes sure to split only on whitespace, TODO optimize
                 candidate_word_count = 1 if normalized_candidate_name.find(" ") < 0 else len(normalized_candidate_name.split())
                 missing_words = max(0, candidate_word_count - input_word_count)  # > 0 if candidate has unmatched names
-                missing_words_penalty = min(10, missing_words * 2.5 * similarity_threshold / 100.0)
-                similarity_ratio -= missing_words_penalty  # 0 if missing 0 words, -4 if missing 2 words, etc
+                if missing_words:
+                    missing_words_score = missing_words * 5 * similarity_threshold / 100.0
+                    missing_words_penalty = min(20, missing_words_score)
+                    similarity_ratio -= missing_words_penalty  # 0 if missing 0 words, -4 if missing 2 words, etc
 
                 # 3. normalize ratio after applying boosts and penalties
                 similarity_ratio = max(0, min(similarity_ratio, 99.9)) # present all non-exact matches as no more than 99.9
