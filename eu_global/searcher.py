@@ -213,7 +213,7 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
                 # TODO word counts can be precomputed for better performance
                 input_word_count = 1 if normalized_query_name.find(" ") < 0 else len(normalized_query_name.split())  # makes sure to split only on whitespace, TODO optimize
                 candidate_word_count = 1 if normalized_candidate_name.find(" ") < 0 else len(normalized_candidate_name.split())
-                missing_words = max(0, candidate_word_count - input_word_count)  # > 0 if candidate has unmatched names
+                missing_words = abs(candidate_word_count - input_word_count)  # > 0 if candidate has unmatched names
                 if missing_words:
                     missing_words_score = missing_words * 5 * similarity_threshold / 100.0
                     missing_words_penalty = min(20, missing_words_score)
