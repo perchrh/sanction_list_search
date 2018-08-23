@@ -56,6 +56,7 @@ def remove_diacritics(word):
 def find_stop_words(id_to_name):
     """
     Finds the most common words in the corpus. Use them as stopwords. Uses a higher percentage for stopwords from especially short words.
+    TODO should be a static, human-verified list, based on both relevant input names (customer lists) and all of the sanction lists
     """
     words = []
     short_words = []
@@ -185,45 +186,51 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
 
     # 4. look up candidate names, filter out matches that are really bad, sort the remaining matches by similarity ratio
     normalized_query_name = " ".join(name_parts)
+    # TODO word counts can be precomputed for better performance
+    input_word_count = 1 if normalized_query_name.find(" ") < 0 else len(normalized_query_name.split())  # makes sure to split only on whitespace,
+    short_name_length_limit = 12
+    is_short_input_name = len(normalized_query_name) <= short_name_length_limit
+    shortness = max(0, short_name_length_limit - len(normalized_query_name))
+
     filtered_candidates = []
     for candidate_id in candidates:
         list_subject = id_to_name[candidate_id]
         (list_subject_aliases, birthdays) = list_subject
         for candidate_name in list_subject_aliases:
             normalized_candidate_name = " ".join(normalize_name_alias(candidate_name))  # TODO precompute this for better performance
-            similarity_ratio = fuzz.token_sort_ratio(normalized_candidate_name, normalized_query_name)
-            exact_match = similarity_ratio == 100
+            string_similarity = fuzz.token_sort_ratio(normalized_candidate_name, normalized_query_name)
+
+            exact_match = string_similarity == 100
+            similarity_score = string_similarity
 
             if not exact_match:
                 # 1. apply boosts:
 
                 # boost phonetically similar matches
-                boost_from_phonetic_similarity = similarity_threshold / 100.0 * phonetic_similarity_ratio / 16
-                similarity_ratio += boost_from_phonetic_similarity
+                boost_from_phonetic_similarity = similarity_threshold / 100.0 * phonetic_similarity_ratio / 16 #up to approx 6 points at 90% threshold
+                similarity_score += boost_from_phonetic_similarity
 
                 # 2. apply penalties:
 
-                short_name_length_limit = 12
-                if len(normalized_query_name) <= short_name_length_limit:
+                if is_short_input_name:
+                    # TODO hackish, look for a better solution
                     # short matches must be extra good. Reduces false positives.
-                    shortness = max(0, short_name_length_limit - len(normalized_query_name))
-                    debuff = 2 * (similarity_threshold / 100.0) * shortness  # TODO verify
-                    similarity_ratio -= debuff
+                    debuff = 2 * (similarity_threshold / 100.0) * shortness
+                    similarity_score -= debuff
 
                 # TODO word counts can be precomputed for better performance
-                input_word_count = 1 if normalized_query_name.find(" ") < 0 else len(normalized_query_name.split())  # makes sure to split only on whitespace, TODO optimize
                 candidate_word_count = 1 if normalized_candidate_name.find(" ") < 0 else len(normalized_candidate_name.split())
                 missing_words = abs(candidate_word_count - input_word_count)  # > 0 if candidate has unmatched names
                 if missing_words:
                     missing_words_score = missing_words * 5 * similarity_threshold / 100.0
                     missing_words_penalty = min(20, missing_words_score)
-                    similarity_ratio -= missing_words_penalty  # 0 if missing 0 words, -4 if missing 2 words, etc
+                    similarity_score -= missing_words_penalty  # 0 if missing 0 words, -4 if missing 2 words, etc
 
-                # 3. normalize ratio after applying boosts and penalties
-                similarity_ratio = max(0, min(similarity_ratio, 99.9)) # present all non-exact matches as no more than 99.9
+                # 3. normalize score after applying boosts and penalties
+                similarity_score = max(0, min(similarity_score, 99.9)) # present all non-exact matches as no more than 99.9
 
-            if similarity_ratio >= similarity_threshold:
-                element = (candidate_id, similarity_ratio, candidate_name)
+            if similarity_score >= similarity_threshold:
+                element = (candidate_id, similarity_score, candidate_name)
                 filtered_candidates.append(element)
 
     filtered_candidates.sort(key=lambda tup: tup[1], reverse=True) # sort by ratio, descending
@@ -232,7 +239,7 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
     seen_candidates = set()
     for c in filtered_candidates:
         # only report one match against each list-subject, the best matching alias
-        (candidate_id, similarity_ratio, candidate_name) = c
+        (candidate_id, similarity_score, candidate_name) = c
         if candidate_id not in seen_candidates:
             unique_candidates.append(c)
             seen_candidates.add(candidate_id)
@@ -310,6 +317,7 @@ def execute_test_queries():
 
     end = timer()
     time_use_s = end - start
+    print("\n") #end progress-line
 
     # sort the output on similarity ratio before printing
     all_results.sort(key=lambda tup: tup[5], reverse=True)  # sort by ratio, descending
