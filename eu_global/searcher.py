@@ -323,7 +323,7 @@ def execute_test_queries():
     all_results.sort(key=lambda tup: tup[5], reverse=True)  # sort by ratio, descending
     for result in all_results:
         (wholename, birthdate, gender, candidate_name, list_entry_id, similarity_score) = result
-        print("{}, {}, {} - {}, {} - {:.2f}".format(wholename, birthdate, gender, candidate_name, list_entry_id, similarity_score))
+        print("{}, {}, {} - {}, {} - {:.2f}".format(wholename, birthdate or "unknown date", gender, candidate_name, list_entry_id, similarity_score))
 
     print("\nFound in total {} matches on {} list-subjects. Searched for {} customers.".format(total_records, total_matches, test_subject_count))
     print("Total time usage for searching: {}s ({}ns per query)".format(int(time_use_s + 0.5), int(10 ** 6 * time_use_s / test_subject_count + 0.5)))
