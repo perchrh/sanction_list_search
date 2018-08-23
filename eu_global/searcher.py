@@ -201,7 +201,7 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
             string_similarity = fuzz.token_sort_ratio(normalized_candidate_name, normalized_query_name)
 
             exact_match = string_similarity == 100
-            similarity_score = string_similarity
+            similarity_score = string_similarity - 5
 
             if not exact_match:
                 # 1. apply boosts:
@@ -309,8 +309,8 @@ def execute_test_queries():
             total_matches += 1
             total_records += len(matches)
             for m in matches:
-                (candidate_id, similarity_ratio, candidate_name) = m
-                result = (wholename, birthdate, gender, candidate_name, "EU_{}".format(candidate_id), similarity_ratio)
+                (candidate_id, similarity_score, candidate_name) = m
+                result = (wholename, birthdate, gender, candidate_name, "EU_{}".format(candidate_id), similarity_score)
                 all_results.append(result)
         print("\rProgress: [{0:50s}] {1:.1f}%".format('#' * int(workdone * 50), workdone * 100), end="", flush=True)
         counter += 1
@@ -322,8 +322,8 @@ def execute_test_queries():
     # sort the output on similarity ratio before printing
     all_results.sort(key=lambda tup: tup[5], reverse=True)  # sort by ratio, descending
     for result in all_results:
-        (wholename, birthdate, gender, candidate_name, list_entry_id, similarity_ratio) = result
-        print("{}, {}, {} - {}, {} - {:.2f}".format(wholename, birthdate, gender, candidate_name, list_entry_id, similarity_ratio))
+        (wholename, birthdate, gender, candidate_name, list_entry_id, similarity_score) = result
+        print("{}, {}, {} - {}, {} - {:.2f}".format(wholename, birthdate, gender, candidate_name, list_entry_id, similarity_score))
 
     print("\nFound in total {} matches on {} list-subjects. Searched for {} customers.".format(total_records, total_matches, test_subject_count))
     print("Total time usage for searching: {}s ({}ns per query)".format(int(time_use_s + 0.5), int(10 ** 6 * time_use_s / test_subject_count + 0.5)))
