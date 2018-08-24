@@ -160,7 +160,7 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
                     continue
 
                 (names, birthdates) = id_to_name[candidate_id]
-                registered_genders = [g for g in [x.gender for x in names] if g]  # filter out None
+                registered_genders = [g for g in [x.gender for x in names] if g]  # filter out None value for gender, i.e. unknown
                 if gender and len(registered_genders) == 1 and gender not in registered_genders:
                     # mark the candidate as bad, so that we don't have to consider it again for this search query
                     bad_candidates.append(candidate_id)
@@ -174,7 +174,7 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
                 # TODO also check birthdate ranges, or birthyear list only
                 # TODO could optionally check birth country
 
-                if levenshtein_distance.ratio(name_part, candidate_name_part) >= 0.6:  # 0.6 = a little bit similar
+                if levenshtein_distance.ratio(name_part, candidate_name_part) >= 0.6:  # performance: Early exit for really bad matches
                     candidates.add(candidate_id)
                     name_parts_matched.add(name_part)
 
@@ -183,6 +183,8 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
     matching_character_count = sum(map(len, name_parts_matched))
     missing_character_count = sum(map(len, name_parts_missed))
     phonetic_similarity_ratio = 100 * matching_character_count / (matching_character_count + missing_character_count)
+    if phonetic_similarity_ratio < 25:  # performance: Early exit for really bad matches
+        return []  # return no matches
 
     # 4. look up candidate names, filter out matches that are really bad, sort the remaining matches by similarity ratio
     normalized_query_name = " ".join(name_parts)
@@ -207,7 +209,7 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
                 # 1. apply boosts:
 
                 # boost phonetically similar matches
-                boost_from_phonetic_similarity = similarity_threshold / 100.0 * phonetic_similarity_ratio / 16 #up to approx 6 points at 90% threshold
+                boost_from_phonetic_similarity = similarity_threshold / 100.0 * phonetic_similarity_ratio / 16  # up to approx 6 points at 90% threshold
                 similarity_score += boost_from_phonetic_similarity
 
                 # 2. apply penalties:
@@ -220,20 +222,20 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
 
                 # TODO word counts can be precomputed for better performance
                 candidate_word_count = 1 if normalized_candidate_name.find(" ") < 0 else len(normalized_candidate_name.split())
-                missing_words = abs(candidate_word_count - input_word_count)  # > 0 if candidate has unmatched names
+                missing_words = abs(candidate_word_count - input_word_count)
                 if missing_words:
                     missing_words_score = missing_words * 5 * similarity_threshold / 100.0
-                    missing_words_penalty = min(20, missing_words_score)
+                    missing_words_penalty = min(20, missing_words_score)  # set a ceiling for the penalty
                     similarity_score -= missing_words_penalty  # 0 if missing 0 words, -4 if missing 2 words, etc
 
                 # 3. normalize score after applying boosts and penalties
-                similarity_score = max(0, min(similarity_score, 99.9)) # present all non-exact matches as no more than 99.9
+                similarity_score = max(0, min(similarity_score, 99.9))  # present all non-exact matches as no more than 99.9
 
             if similarity_score >= similarity_threshold:
                 element = (candidate_id, similarity_score, candidate_name)
                 filtered_candidates.append(element)
 
-    filtered_candidates.sort(key=lambda tup: tup[1], reverse=True) # sort by ratio, descending
+    filtered_candidates.sort(key=lambda tup: tup[1], reverse=True)  # sort by ratio, descending
 
     unique_candidates = []
     seen_candidates = set()
@@ -247,7 +249,6 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
     return unique_candidates
 
 
-
 def print_longest_overflow_bin_length(bin_to_id, subjectType):
     longest_list = 0
     bin_of_longest_list = None
@@ -259,7 +260,7 @@ def print_longest_overflow_bin_length(bin_to_id, subjectType):
 
 
 def memory_usage_resource():
-    import resource # not portable across platforms
+    import resource  # not portable across platforms
     rusage_denom = 1024.
     if sys.platform == 'darwin':
         # ... it seems that in OSX the output is different units ...
@@ -291,7 +292,7 @@ def import_test_subjects(filename):
 
 def execute_test_queries():
     filename = "test_queries.csv"
-    #filename = "internal_test_queries.csv" # file intentionally not in git
+    #filename = "internal_test_queries.csv"  # file intentionally not in git
     test_subjects = import_test_subjects(filename)
     test_subject_count = len(test_subjects)
     start = timer()
@@ -301,10 +302,10 @@ def execute_test_queries():
     counter = 0
     print("Searching for {} test-subjects read from file '{}'".format(test_subject_count, filename))
     for (firstname, lastname, birthdate, gender) in test_subjects:
-        workdone = counter/ test_subject_count
+        workdone = counter / test_subject_count
 
         wholename = firstname + " " + lastname
-        matches = search(wholename, bin_to_id_persons, id_to_name_persons, gender=gender, birthdate=birthdate, similarity_threshold=80)
+        matches = search(wholename, bin_to_id_persons, id_to_name_persons, gender=gender, birthdate=birthdate, similarity_threshold=90)
         if matches:
             total_matches += 1
             total_records += len(matches)
@@ -317,7 +318,7 @@ def execute_test_queries():
 
     end = timer()
     time_use_s = end - start
-    print("\n") #end progress-line
+    print("\n")  # end progress-line
 
     # sort the output on similarity ratio before printing
     all_results.sort(key=lambda tup: tup[5], reverse=True)  # sort by ratio, descending
