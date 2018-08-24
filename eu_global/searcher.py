@@ -174,7 +174,7 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
                 # TODO also check birthdate ranges, or birthyear list only
                 # TODO could optionally check birth country
 
-                if levenshtein_distance.ratio(name_part, candidate_name_part) >= 0.6:  # performance: Early exit for really bad matches
+                if levenshtein_distance.ratio(name_part, candidate_name_part) >= 0.6:  # do not add really bad matches
                     candidates.add(candidate_id)
                     name_parts_matched.add(name_part)
 
