@@ -20,8 +20,10 @@ def load_sanctions(filename='consolidated.xml'):
 
         fixedRef = entity.REFERENCE_NUMBER.strip()
 
-        name_aliases = []
-        name_aliases.append(" ".join(entity.FIRST_NAME.split()).strip())  # companies have only first names in list
+        name_aliases = set()
+        whole_name = " ".join(entity.FIRST_NAME.split()).strip()
+        name_parts = [NamePart(p) for p in whole_name.split()]
+        name_aliases.add(NameAlias(name_parts))  # companies have only first names in list
         for alias in entity.ENTITY_ALIAS:
             if alias.QUALITY == 'Low':
                 continue  # skip these for now, TODO include them, but mark as low quality
@@ -29,9 +31,8 @@ def load_sanctions(filename='consolidated.xml'):
             name = alias.ALIAS_NAME
             name = " ".join(name.split())  # remove white-space and linebreaks
             name_parts = [NamePart(p) for p in name.split() if p]
-
             if name_parts:
-                name_aliases.append(NameAlias(name_parts))
+                name_aliases.add(NameAlias(name_parts))
 
         id_to_name_entities[fixedRef] = (name_aliases, [])
 

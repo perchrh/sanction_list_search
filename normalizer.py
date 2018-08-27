@@ -17,12 +17,6 @@ import functools
 
 def normalize_name_alias(name_alias: NameAlias):
     all_name_parts = set()
-    try:
-        a = name_alias.name_parts
-    except AttributeError:
-        import sys
-        print("Bad data, exiting")
-        sys.exit(0)
     for name_part in name_alias.name_parts:
 
 
