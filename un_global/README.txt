@@ -8,3 +8,4 @@ sed -i 's/xs:NCName/xs:string/g' sc-sanctions.xsd as a workaround
 
 Ref
 https://www.un.org/sc/suborg/en/sanctions/un-sc-consolidated-list
+https://scsanctions.un.org/resources/xml/en/consolidated.xml
