@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import fuzzy
-import unicodedata
 from timeit import default_timer as timer
 from collections import Counter
 
@@ -11,47 +10,7 @@ from dataobjects import NameAlias
 
 dmeta = fuzzy.DMetaphone()
 
-
-def normalize_aliases(name_aliases):
-    all_name_parts = set()
-    for name_alias in name_aliases:
-        normalized_name_alias = normalize_name_alias(name_alias)
-        for value in normalized_name_alias:
-            all_name_parts.add(value)
-
-    return all_name_parts
-
-
-import functools
-
-
-def normalize_name_alias(name_alias):
-    all_name_parts = set()
-    for name_part in name_alias.name_parts:
-        name_part_value = name_part.part
-        split_characters = [x for x in name_part_value if not x.isalpha() and not x.isdigit()]
-        if split_characters:
-            name_part_value = functools.reduce(lambda s, sep: s.replace(sep, ' '), split_characters,
-                                               name_part_value).strip()
-            for name_part_part in name_part_value.split():
-                normalized_name = normalize_word(name_part_part)
-                all_name_parts.add(normalized_name)
-        else:
-            normalized_name = normalize_word(name_part_value)
-            all_name_parts.add(normalized_name)
-    return all_name_parts
-
-
-def normalize_word(word):
-    return replace_nordic_letters(remove_diacritics(word.lower()))
-
-
-def replace_nordic_letters(word):
-    return word.replace("ø", "o").replace("æ", "ae").replace("å", "aa").replace("ä", "a").replace("ö", "o")
-
-def remove_diacritics(word):
-    return ''.join(c for c in unicodedata.normalize('NFKD', word) if unicodedata.category(c) != 'Mn')
-
+import normalizer
 
 def find_noise_words(id_to_name):
     """
@@ -62,7 +21,7 @@ def find_noise_words(id_to_name):
     short_words = []
     for reference, list_subject in id_to_name.items():
         (aliases, birthdates) = list_subject
-        name_parts = normalize_aliases(aliases)
+        name_parts = normalizer.normalize_aliases(aliases)
         for name_part in name_parts:
             if len(name_part) < 2:
                 continue
@@ -93,7 +52,7 @@ def compute_phonetic_bin_lookup_table(id_to_name, stop_words):
     bin_to_id = {}
     for reference, list_subject in id_to_name.items():
         (aliases, birthdates) = list_subject
-        unique_name_parts = set(normalize_aliases(aliases))
+        unique_name_parts = set(normalizer.normalize_aliases(aliases))
         for name_part in unique_name_parts:
             if len(name_part) < 2 or name_part in stop_words:
                 # skip stop words and words of one character only. TODO consider including stopwords, but penalise matches by stopword only
@@ -138,7 +97,7 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
 
     # 1. calculate the phonetics bins of the input name
     name_parts = [NamePart(name_string)]
-    name_parts = normalize_name_alias(NameAlias(name_parts, None))
+    name_parts = normalizer.normalize_name_alias(NameAlias(name_parts, None))
 
     bins = set()
     for name_part in name_parts:
@@ -199,7 +158,7 @@ def search(name_string, bin_to_id, id_to_name, gender=None, birthdate=None, simi
         list_subject = id_to_name[candidate_id]
         (list_subject_aliases, birthdays) = list_subject
         for candidate_name in list_subject_aliases:
-            normalized_candidate_name = " ".join(normalize_name_alias(candidate_name))  # TODO precompute this for better performance
+            normalized_candidate_name = " ".join(normalizer.normalize_name_alias(candidate_name))  # TODO precompute this for better performance
             string_similarity = fuzz.token_sort_ratio(normalized_candidate_name, normalized_query_name)
 
             exact_match = string_similarity == 100
