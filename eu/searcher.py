@@ -53,7 +53,7 @@ def remove_diacritics(word):
     return ''.join(c for c in unicodedata.normalize('NFKD', word) if unicodedata.category(c) != 'Mn')
 
 
-def find_stop_words(id_to_name):
+def find_noise_words(id_to_name):
     """
     Finds the most common words in the corpus. Use them as stopwords. Uses a higher percentage for stopwords from especially short words.
     TODO should be a static, human-verified list, based on both relevant input names (customer lists) and all of the sanction lists
@@ -335,8 +335,8 @@ if __name__ == "__main__":
 
     (id_to_name_persons, id_to_name_entities) = load_sanctions('eu_global_full.xml')
 
-    stop_words_persons = find_stop_words(id_to_name_persons)
-    stop_words_entities = find_stop_words(id_to_name_entities)
+    stop_words_persons = find_noise_words(id_to_name_persons)
+    stop_words_entities = find_noise_words(id_to_name_entities)
 
     bin_to_id_persons = compute_phonetic_bin_lookup_table(id_to_name_persons, stop_words_persons)
     bin_to_id_entities = compute_phonetic_bin_lookup_table(id_to_name_entities, stop_words_entities)
