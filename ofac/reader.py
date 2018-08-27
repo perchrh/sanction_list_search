@@ -42,51 +42,56 @@ def create_single_date(date):
 import sdn
 
 
-def load_sanctions(cons_filename, sdn_filename):
-    consolidated_list = sdn.parse(cons_filename, silence=True)
+def load_sdn_sanctions(sdn_filename):
     sdn_list = sdn.parse(sdn_filename, silence=True)
+    return load_sanctions(sdn_list)
 
+
+def load_consolidated_sanctions(cons_filename):
+    consolidated_list = sdn.parse(cons_filename, silence=True)
+    return load_sanctions(consolidated_list)
+
+
+def load_sanctions(sanction_list):
     id_to_name_entities = {}
     id_to_name_persons = {}
 
-    sources = [consolidated_list, sdn_list]
-    for sanction_list in sources:
-        sanctioned_parties = sanction_list.DistinctParties.get_DistinctParty()
+    sanctioned_parties = sanction_list.DistinctParties.get_DistinctParty()
 
-        for party in sanctioned_parties:
-            name_aliases = []
-            date_aliases = []
-            for profile in party.Profile:
-                for feature in profile.Feature:
-                    if feature.FeatureTypeID == 8:  # birthdate
-                        for version in feature.FeatureVersion:
-                            # there is currently never more than one version in the list, and its unclear how versions are to be marked current and outdated
-                            if version.ReliabilityID == 1561:  # 1561 means it's been proven false, so skip it
-                                continue
+    for party in sanctioned_parties:
+        name_aliases = []
+        date_aliases = []
+        for profile in party.Profile:
+            for feature in profile.Feature:
+                if feature.FeatureTypeID == 8:  # birthdate
+                    for version in feature.FeatureVersion:
+                        # there is currently never more than one version in the list, and its unclear how versions are to be marked current and outdated
+                        if version.ReliabilityID == 1561:  # 1561 means it's been proven false, so skip it
+                            continue
 
-                            for period in version.DatePeriod:
-                                date_aliases.append(period)
-                for identity in profile.Identity:
-                    for alias in identity.Alias:
-                        if alias.LowQuality == False:  # TODO include the low quality aliases as well, but mark then accordingly
-                            for name in alias.DocumentedName:
-                                parts = []
-                                for namepart in name.DocumentedNamePart:
-                                    namepart_value = namepart.NamePartValue
-                                    if namepart_value.ScriptID == 215:  # our input is latin only, so we match against latin only
-                                        namevalue = namepart_value.valueOf_
-                                        parts.append(namevalue)
-                                if parts:
-                                    name_parts = [NamePart(p) for p in parts]
-                                    name_aliases.append((NameAlias(name_parts)))
+                        for period in version.DatePeriod:
+                            date_aliases.append(period)
+            for identity in profile.Identity:
+                for alias in identity.Alias:
+                    if alias.LowQuality == False:  # TODO include the low quality aliases as well, but mark then accordingly
+                        for name in alias.DocumentedName:
+                            parts = []
+                            for namepart in name.DocumentedNamePart:
+                                namepart_value = namepart.NamePartValue
+                                if namepart_value.ScriptID == 215:  # our input is latin only, so we match against latin only
+                                    namevalue = namepart_value.valueOf_
+                                    parts.append(namevalue)
+                            if parts:
+                                name_parts = [NamePart(p) for p in parts]
+                                name_aliases.append((NameAlias(name_parts)))
 
-            if name_aliases:
-                if profile.PartySubTypeID == 4:  # person
-                    dates = [extract_dates(d) for d in date_aliases if d]
+        if name_aliases:
+            if profile.PartySubTypeID == 4:  # person
+                dates = [extract_dates(d) for d in date_aliases if d]
 
-                    id_to_name_persons[party.FixedRef] = (name_aliases, dates)
-                else:  # not a person
-                    id_to_name_entities[party.FixedRef] = (name_aliases, [])
+                id_to_name_persons[party.FixedRef] = (name_aliases, dates)
+            else:  # not a person
+                id_to_name_entities[party.FixedRef] = (name_aliases, [])
 
     return (id_to_name_persons, id_to_name_entities)
 
@@ -99,11 +104,15 @@ def printSubjects(bin_to_id):
 if __name__ == "__main__":
     start = timer()
 
-    (id_to_name_persons, id_to_name_entities) = load_sanctions('cons_advanced.xml', 'sdn_advanced.xml')
+    (id_to_name_persons_cons, id_to_name_entities_cons) = load_consolidated_sanctions('cons_advanced.xml')
+    (id_to_name_persons_sdn, id_to_name_entities_sdn) = load_sdn_sanctions('sdn_advanced.xml')
 
     end = timer()
-    print("Total time usage for loading: {} ms".format(int(10 ** 3 * (end - start) + 0.5)))
-    print("Loaded {} entities and {} persons".format(len(id_to_name_entities), len(id_to_name_persons)))
+    print("Total time usage for loading SDN and consolidated list: {} ms".format(int(10 ** 3 * (end - start) + 0.5)))
+    print("Loaded {} entities and {} persons".format(len(id_to_name_entities_cons) + len(id_to_name_persons_cons),
+                                                     len(id_to_name_persons_sdn) + len(id_to_name_entities_sdn)))
 
-    printSubjects(id_to_name_entities)
-    printSubjects(id_to_name_persons)
+    printSubjects(id_to_name_entities_cons)
+    printSubjects(id_to_name_persons_cons)
+    printSubjects(id_to_name_entities_sdn)
+    printSubjects(id_to_name_persons_sdn)
