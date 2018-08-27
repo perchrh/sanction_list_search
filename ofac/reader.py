@@ -5,7 +5,8 @@ from dataobjects import NamePart
 from dataobjects import NameAlias
 from datetime import datetime
 
-def datePeriodPrinter(DatePeriod):
+
+def extract_dates(DatePeriod):
     start_date_from = create_single_date(DatePeriod.Start.From)
     start_date_to = create_single_date(DatePeriod.Start.To)
 
@@ -15,15 +16,15 @@ def datePeriodPrinter(DatePeriod):
     if start_date_from == start_date_to:
         if end_date_from == end_date_to:
             if start_date_from == end_date_from:
-                return start_date_from # all values equal, this is a single exact date
+                return start_date_from  # all values equal, this is a single exact date
             else:
                 # TODO ranges not supported
-                return None #(start_date_from, end_date_from) # equal pairs
+                return None  # (start_date_from, end_date_from) # equal pairs
     else:
         # TODO ranges not supported
         # what is this case supposed to represent? that the whole year is included?
-        #values = [start_date_from, start_date_to, end_date_to, end_date_from]
-        #return tuple(values)
+        # values = [start_date_from, start_date_to, end_date_to, end_date_from]
+        # return tuple(values)
         return None
 
 
@@ -40,6 +41,7 @@ def create_single_date(date):
 
 import sdn
 
+
 def load_sanctions(cons_filename, sdn_filename):
     consolidated_list = sdn.parse(cons_filename, silence=True)
     sdn_list = sdn.parse(sdn_filename, silence=True)
@@ -49,18 +51,7 @@ def load_sanctions(cons_filename, sdn_filename):
 
     sources = [consolidated_list, sdn_list]
     for sanction_list in sources:
-        multiple_date_counter = 0
-
         sanctioned_parties = sanction_list.DistinctParties.get_DistinctParty()
-
-        number_of_parties = len(sanctioned_parties)
-
-        print("Number of sanctioned parties in OFAC list is", number_of_parties)
-
-        # print person names in list
-
-        persons = []
-        entities = []
 
         for party in sanctioned_parties:
             name_aliases = []
@@ -77,30 +68,27 @@ def load_sanctions(cons_filename, sdn_filename):
                                 date_aliases.append(period)
                 for identity in profile.Identity:
                     for alias in identity.Alias:
-                        if alias.LowQuality == False: # TODO include these too, but mark them as bad
+                        if alias.LowQuality == False:  # TODO include the low quality aliases as well, but mark then accordingly
                             for name in alias.DocumentedName:
-                                parts = [] #TODO modify
+                                parts = []
                                 for namepart in name.DocumentedNamePart:
                                     namepart_value = namepart.NamePartValue
                                     if namepart_value.ScriptID == 215:  # our input is latin only, so we match against latin only
                                         namevalue = namepart_value.valueOf_
-                                        parts.append(namevalue) #TODO modify
+                                        parts.append(namevalue)
                                 if parts:
-                                    name_aliases.append(parts) # TODO modify
+                                    name_parts = [NamePart(p) for p in parts]
+                                    name_aliases.append((NameAlias(name_parts)))
 
             if name_aliases:
                 if profile.PartySubTypeID == 4:  # person
-                    dates = [datePeriodPrinter(d) for d in date_aliases]
-                    date_prints = [d.strftime("%Y-%m-%d") for d in dates if d]
+                    dates = [extract_dates(d) for d in date_aliases if d]
 
-                    persons.append((party.FixedRef, name_aliases, date_prints))
+                    id_to_name_persons[party.FixedRef] = (name_aliases, dates)
                 else:  # not a person
-                    entities.append((party.FixedRef, name_aliases))
-    for item in entities:
-        print(item)
+                    id_to_name_entities[party.FixedRef] = (name_aliases, [])
 
-    for item in persons:
-        print(item)
+    return (id_to_name_persons, id_to_name_entities)
 
 
 def printSubjects(bin_to_id):
@@ -111,12 +99,11 @@ def printSubjects(bin_to_id):
 if __name__ == "__main__":
     start = timer()
 
-    #(id_to_name_persons, id_to_name_entities) = load_sanctions('cons_advanced.xml', 'sdn_advanced.xml')
-    load_sanctions('cons_advanced.xml', 'sdn_advanced.xml')
+    (id_to_name_persons, id_to_name_entities) = load_sanctions('cons_advanced.xml', 'sdn_advanced.xml')
 
     end = timer()
     print("Total time usage for loading: {} ms".format(int(10 ** 3 * (end - start) + 0.5)))
-    #print("Loaded {} entities and {} persons".format(len(id_to_name_entities), len(id_to_name_persons)))
+    print("Loaded {} entities and {} persons".format(len(id_to_name_entities), len(id_to_name_persons)))
 
-    #printSubjects(id_to_name_entities)
-    #printSubjects(id_to_name_persons)
+    printSubjects(id_to_name_entities)
+    printSubjects(id_to_name_persons)
