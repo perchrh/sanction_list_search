@@ -4,11 +4,11 @@ from timeit import default_timer as timer
 from dataobjects import NamePart
 from dataobjects import NameAlias
 
-import un_global
+import un_global as parser
 
 
-def load_sanctions(filename):
-    sanctions = un_global.parse(filename, silence=True)
+def load_sanctions(filename='consolidated.xml'):
+    sanctions = parser.parse(filename, silence=True)
 
     entities = sanctions.ENTITIES.ENTITY
     individuals = sanctions.INDIVIDUALS.INDIVIDUAL
@@ -78,7 +78,7 @@ def printSubjects(bin_to_id):
 if __name__ == "__main__":
     start = timer()
 
-    (id_to_name_persons, id_to_name_entities) = load_sanctions('consolidated.xml')
+    (id_to_name_persons, id_to_name_entities) = load_sanctions()
 
     end = timer()
     print("Total time usage for loading: {} ms".format(int(10 ** 3 * (end - start) + 0.5)))

@@ -8,7 +8,7 @@ from datetime import datetime
 import eu_global as parser
 
 
-def load_sanctions(filename):
+def load_sanctions(filename="eu_global_full.xml"):
     sanctions = parser.parse(filename, silence=True)
 
     id_to_name_entities = {}
@@ -25,7 +25,7 @@ def load_sanctions(filename):
 
             gender_of_alias = alias.gender  # M, F or None
 
-            name_parts = [NamePart(alias.wholeName)] #TODO correctly separate firstname and other names
+            name_parts = [NamePart(alias.wholeName)]  # TODO correctly separate firstname and other names
             name_alias = NameAlias(name_parts, alias.nameLanguage, gender_of_alias)
 
             aliases.append(name_alias)
@@ -49,7 +49,7 @@ def printSubjects(bin_to_id):
 if __name__ == "__main__":
     start = timer()
 
-    (id_to_name_persons, id_to_name_entities) = load_sanctions('eu_global_full.xml')
+    (id_to_name_persons, id_to_name_entities) = load_sanctions()
 
     end = timer()
     print("Total time usage for loading: {} ms".format(int(10 ** 3 * (end - start) + 0.5)))
