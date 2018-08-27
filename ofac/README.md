@@ -26,3 +26,4 @@ The non-SDN-List .xsd file is available inside this zipped file:
 https://www.treasury.gov/ofac/downloads/consolidated/consall.zip
 
 Here, we're using the cons_advanced.xml from the consall.zip
+and the sdn_advanced.xml from the sdnall.zip
