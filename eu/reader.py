@@ -5,7 +5,7 @@ from dataobjects import NamePart
 from dataobjects import NameAlias
 from datetime import datetime
 
-import eu_global as parser
+from eu import eu_global as parser
 
 
 def load_sanctions(filename="eu_global_full.xml"):
