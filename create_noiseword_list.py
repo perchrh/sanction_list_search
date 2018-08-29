@@ -77,7 +77,7 @@ for subject in stop_words + stop_words_short:
     entity_words.add((subject[0]))
 
 business_entity_type_abbreviations = set()
-for entity_abbreviation in open('business_entity_names'):
+for entity_abbreviation in open('business_entity_type_names'):
     business_entity_type_abbreviations.add(entity_abbreviation.strip())
 
 print("Words both in common words for business names and for business entity names are:")
