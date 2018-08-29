@@ -6,7 +6,7 @@ from eu import reader as eu_reader
 from ofac import reader as ofac_reader
 from un import reader as un_reader
 from collections import Counter
-from normalizer import normalize_aliases
+import normalizer
 
 
 def print_word_frequencies(stop_words, stop_words_short, key):
@@ -25,7 +25,7 @@ def find_most_common_words(sanction_entries, count):
     for sanction_entry in sanction_entries:
         (reference, list_subject) = sanction_entry
         (aliases, birthdates) = list_subject
-        name_parts = normalize_aliases(aliases)
+        name_parts = normalizer.normalize_aliases(aliases)
         for name_part in name_parts:
             if len(name_part) < 2:
                 continue  # ignored
@@ -65,10 +65,23 @@ for item in persons.items(): all_persons.append(item)
 
 count = 100
 print("Loaded {} entities and {} persons from sanction lists".format(len(all_entities), len(all_persons)))
-print(count, "Most commons words are:\n")
+print(count, "most commons words are:\n")
 
 (stop_words, stop_words_short) = find_most_common_words(all_persons, count)
 print_word_frequencies(stop_words, stop_words_short, "individuals")
 
-(stop_words, stop_words_short) = find_most_common_words(all_entities, count)
+(stop_words, stop_words_short) = find_most_common_words(all_entities, int(count*2.5))
 print_word_frequencies(stop_words, stop_words_short, "entities")
+entity_words = set()
+for subject in stop_words + stop_words_short:
+    entity_words.add((subject[0]))
+
+business_entity_type_abbreviations = set()
+for entity_abbreviation in open('business_entity_names'):
+    business_entity_type_abbreviations.add(entity_abbreviation.strip())
+
+print("Words both in common words for business names and for business entity names are:")
+for word in sorted(business_entity_type_abbreviations.intersection(entity_words)):
+    print(word)
+
+
