@@ -90,7 +90,7 @@ def load_sanctions(sanction_list):
                 dates = [extract_dates(d) for d in date_aliases if d]
 
                 id_to_name_persons[party.FixedRef] = (name_aliases, dates)
-            else:  # not a person
+            else:  # not a person, type 3 is a company
                 id_to_name_entities[party.FixedRef] = (name_aliases, [])
 
     return (id_to_name_persons, id_to_name_entities)
