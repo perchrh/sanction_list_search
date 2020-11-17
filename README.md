@@ -3,14 +3,14 @@ What is this
 Basic reader and searcher for entities and individuals on the EU, UN and OFAC sanction lists.
 
 See */reader.py for basic read methods  
-See eu_global/reader.py for a basic search method
+See eu/searcher.py#search for a basic search method
 
 How to run it
 -----
 Requires python3, and the pip-modules 
 fuzzywuzzy, Fuzzy, python-Levenshtein, and lxml, installed.
 
-    $ cd eu_global
+    $ cd eu
     $ python3 searcher.py
 
 Search method
@@ -24,7 +24,7 @@ Pre-compute a mapping of phonetic lookup-keys from normalized names in list sour
 Example of normalizing a name, and splitting it into name parts: "Jenny-Margot Åhlen" -> "jenny, margot, ahlen".
 
 First, determine the phonetic lookup-keys from the input name (the query). 
-Then, build a list of candidate list-entry matches using entry-ids from the phonetic lookup-key matches
+Then, build a list of candidate list-entry matches using entry-ids from the phonetic lookup-key matches. 
 Filter this list by using a string similarity algorithm, with normalized similarity ratio output. 
 Add or subtract to the similarity ratio depending on various properties, to rank the match up or down.
 Example: if not all name parts from the query matches all name parts of the list subject, apply a penalty.   
